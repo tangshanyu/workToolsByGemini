@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TextArea, Button, OutputBox } from '../components/UI';
 
 // Mock Test SQL
@@ -10,12 +10,41 @@ const SqlToJava: React.FC = () => {
   const [formattedText, setFormattedText] = useState('');
   const [sbAppendOutput, setSbAppendOutput] = useState('');
   const [hibernateOutput, setHibernateOutput] = useState('');
+  const [isLibraryLoaded, setIsLibraryLoaded] = useState(false);
   
   const [options, setOptions] = useState({
     formatMethod: 'poorsql' as 'poorsql' | 'manual',
     camelCaseAs: false,
     generateHibernate: true
   });
+
+  // Check for library availability on mount and periodically
+  useEffect(() => {
+    const checkLibrary = () => {
+        if (typeof window.PoorSQL !== 'undefined') {
+            setIsLibraryLoaded(true);
+            return true;
+        }
+        return false;
+    };
+
+    if (checkLibrary()) return;
+
+    // Aggressive polling for the first few seconds
+    const interval = setInterval(() => {
+        if (checkLibrary()) {
+            clearInterval(interval);
+        }
+    }, 200); 
+
+    // Stop checking after 10 seconds to save resources
+    const timeout = setTimeout(() => clearInterval(interval), 10000);
+
+    return () => {
+        clearInterval(interval);
+        clearTimeout(timeout);
+    };
+  }, []);
 
   const handleFormatSql = async () => {
     if (!inputSql.trim()) {
@@ -28,20 +57,29 @@ const SqlToJava: React.FC = () => {
 
     try {
       if (options.formatMethod === 'poorsql') {
-        if (typeof window.PoorSQL !== 'undefined' && window.PoorSQL.formatFull) {
-          // Use PoorSQL formatFull to get both text and HTML
-          const result = window.PoorSQL.formatFull(inputSql, {
+        if (isLibraryLoaded && window.PoorSQL) {
+          const formattingOptions = {
             indent: "    ",
             spacesPerTab: 4,
             maxLineWidth: 999,
             includeHtml: true,
             coloring: true
-          });
-          
-          resultText = result.text;
-          resultHtml = result.html;
+          };
+
+          if (window.PoorSQL.formatFull) {
+             // Use PoorSQL formatFull to get both text and HTML
+            const result = window.PoorSQL.formatFull(inputSql, formattingOptions);
+            resultText = result.text;
+            resultHtml = result.html;
+          } else if (window.PoorSQL.format) {
+            // Fallback for older version without formatFull
+             resultText = window.PoorSQL.format(inputSql, formattingOptions);
+             // Cannot get HTML easily without formatFull in the specific version logic, so plain text only fallback
+             resultHtml = ''; 
+          }
         } else {
-          console.warn('PoorSQL library not loaded. Ensure /poorsql.js is accessible.');
+          console.warn('PoorSQL library not loaded yet or failed to load. Falling back to raw text.');
+          alert("PoorSQL 格式化庫尚未載入，請檢查 public/poorsql.js 檔案是否存在。");
           // Fallback simple format if possible or just use raw
           resultText = inputSql;
           resultHtml = '';
@@ -187,7 +225,19 @@ const SqlToJava: React.FC = () => {
                 className="accent-blue-500 w-5 h-5"
               />
               <div className="group-hover:text-blue-300 transition-colors">
-                <p className="font-medium">✨ PoorSQL 格式化</p>
+                <div className="flex items-center gap-2">
+                    <p className="font-medium">✨ PoorSQL 格式化</p>
+                    {!isLibraryLoaded && (
+                        <span className="text-[10px] bg-red-500/20 text-red-400 px-2 py-0.5 rounded border border-red-500/30 animate-pulse">
+                            載入中...
+                        </span>
+                    )}
+                    {isLibraryLoaded && (
+                        <span className="text-[10px] bg-green-500/20 text-green-400 px-2 py-0.5 rounded border border-green-500/30">
+                            就緒
+                        </span>
+                    )}
+                </div>
                 <p className="text-xs text-gray-500">使用本地庫進行格式化與變色</p>
               </div>
             </label>

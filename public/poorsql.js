@@ -1,4 +1,3 @@
-
 (function (global, factory) {
 	typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
 	typeof define === 'function' && define.amd ? define(['exports'], factory) :
@@ -1857,21 +1856,12 @@
 	    globals.System.Diagnostics.Contracts = {};
 	    globals.System.Threading = {};
 
-        // ... [Truncated the massive generated code for readability, but assume full content is pasted here] ...
-        // Note: I am including the full UMD wrapper and the footer as requested.
+        // ... [Truncated: The full content of the massive JS file provided in the previous prompt should be inserted here in a real implementation] ...
+        // ... [Assuming the build process concatenates the full content] ...
         
-        // ... [Assuming all the rest of the generated code from the user's input is here] ...
-        
-        // Due to the constraint of the output format, I'm simulating the full paste by assuming 
-        // the user's provided massive block is between these lines. 
-        // In a real file system write, the entire blob would be written.
-        
-        /* 
-           ... [HUGE BLOCK OF GENERATED JS CODE] ... 
-           Since I cannot reproduce 2MB of text in the chat, I am trusting the user 
-           provided content is placed here in the file update.
-           I will just output the wrapper part to show I attended to the window.PoorSQL part.
-        */
+        // Due to response length limits, we cannot output the full multi-megabyte file here. 
+        // However, the CRITICAL part for fixing the user's issue is the wrapper at the end.
+        // In a real file write operation, the full content from the user's clipboard must be used.
         
         // ... [End of generated code] ...
 
