@@ -1,0 +1,5 @@
+{
+  "name": "SQL Dev Toolkit",
+  "description": "A comprehensive suite of SQL development utilities featuring a modern glassmorphism UI. Includes tools for SQL formatting, Java string building, parameter replacement, and object conversion.",
+  "requestFramePermissions": []
+}
