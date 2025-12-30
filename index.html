@@ -24,6 +24,8 @@
       body {
         background-color: #0D1117;
         color: #E6EDF3;
+        margin: 0;
+        padding: 0;
       }
       .glass-panel {
         background: rgba(48, 54, 61, 0.6);
@@ -51,6 +53,7 @@
       .SQLCode {
         font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
         white-space: pre-wrap;
+        word-break: break-all;
       }
       .SQLKeyword { color: #569CD6; font-weight: bold; }
       .SQLString { color: #CE9178; }
@@ -59,8 +62,8 @@
       .SQLComment { color: #6A9955; font-style: italic; }
       .SQLErrorHighlight { background-color: #5a1d1d; border-bottom: 2px solid #ff0000; }
     </style>
-    <!-- Local script with full implementation -->
-    <script src="poorsql.js"></script>
+    <!-- Local script with full implementation (Deferred to prevent blocking render) -->
+    <script src="poorsql.js" defer></script>
     <script type="importmap">
 {
   "imports": {
@@ -74,5 +77,7 @@
 </head>
   <body>
     <div id="root"></div>
+    <!-- Entry point for the React Application -->
+    <script type="module" src="/index.tsx"></script>
   </body>
 </html>
