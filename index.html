@@ -49,50 +49,24 @@
         background: rgba(88, 166, 255, 0.5); 
       }
 
-      /* SQL Coloring - Restore CSS classes required by PoorSQL with higher specificity */
+      /* SQL Coloring - Restore CSS classes required by PoorSQL */
       .SQLCode {
         font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
         white-space: pre-wrap;
         word-break: break-all;
         font-size: 14px;
         line-height: 1.5;
-        color: #d4d4d4; /* Default text color */
       }
-      .SQLCode .SQLKeyword { color: #569CD6 !important; font-weight: bold; }
-      .SQLCode .SQLString { color: #CE9178 !important; }
-      .SQLCode .SQLFunction { color: #DCDCAA !important; }
-      .SQLCode .SQLOperator { color: #D4D4D4 !important; }
-      .SQLCode .SQLComment { color: #6A9955 !important; font-style: italic; }
-      .SQLCode .SQLErrorHighlight { background-color: #5a1d1d !important; border-bottom: 2px solid #ff0000; }
+      .SQLKeyword { color: #569CD6; font-weight: bold; }
+      .SQLString { color: #CE9178; }
+      .SQLFunction { color: #DCDCAA; }
+      .SQLOperator { color: #D4D4D4; }
+      .SQLComment { color: #6A9955; font-style: italic; }
+      .SQLErrorHighlight { background-color: #5a1d1d; border-bottom: 2px solid #ff0000; }
     </style>
     
-    <!-- 
-      Hack: Define 'exports' and 'module' to trick poorsql.js into thinking it's in a CommonJS environment.
-      This allows us to capture the full exports (including formatSql with HTML support) which are otherwise 
-      overwritten/hidden by the library's default browser initialization logic. 
-    -->
-    <script>
-      window.exports = {};
-      window.module = { exports: window.exports };
-    </script>
-
-    <!-- Load local PoorSQL library directly with relative path and cache busting -->
-    <script src="./poorsql.js?v=2"></script>
-
-    <!-- Patch window.PoorSQL to expose formatFull using the captured exports -->
-    <script>
-      if (window.exports && window.exports.formatSql) {
-          window.PoorSQL = {
-              // Standard text-only format
-              format: function(sql, options) { return window.exports.formatSql(sql, options).text; },
-              // Full format including HTML coloring
-              formatFull: function(sql, options) { return window.exports.formatSql(sql, options); }
-          };
-          // Clean up global namespace to prevent conflicts
-          delete window.exports;
-          delete window.module;
-      }
-    </script>
+    <!-- Load local PoorSQL library directly with relative path -->
+    <script src="./poorsql.js"></script>
 
     <script type="importmap">
 {
