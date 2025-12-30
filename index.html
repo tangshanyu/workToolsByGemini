@@ -66,8 +66,33 @@
       .SQLCode .SQLErrorHighlight { background-color: #5a1d1d !important; border-bottom: 2px solid #ff0000; }
     </style>
     
+    <!-- 
+      Hack: Define 'exports' and 'module' to trick poorsql.js into thinking it's in a CommonJS environment.
+      This allows us to capture the full exports (including formatSql with HTML support) which are otherwise 
+      overwritten/hidden by the library's default browser initialization logic. 
+    -->
+    <script>
+      window.exports = {};
+      window.module = { exports: window.exports };
+    </script>
+
     <!-- Load local PoorSQL library directly with relative path and cache busting -->
     <script src="./poorsql.js?v=2"></script>
+
+    <!-- Patch window.PoorSQL to expose formatFull using the captured exports -->
+    <script>
+      if (window.exports && window.exports.formatSql) {
+          window.PoorSQL = {
+              // Standard text-only format
+              format: function(sql, options) { return window.exports.formatSql(sql, options).text; },
+              // Full format including HTML coloring
+              formatFull: function(sql, options) { return window.exports.formatSql(sql, options); }
+          };
+          // Clean up global namespace to prevent conflicts
+          delete window.exports;
+          delete window.module;
+      }
+    </script>
 
     <script type="importmap">
 {
