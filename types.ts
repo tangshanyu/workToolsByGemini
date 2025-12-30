@@ -1,12 +1,9 @@
-// Define the shape of the global PoorSQL object loaded via script tag
+// Define the shape of the global objects loaded via script tags
 declare global {
   interface Window {
-    PoorSQL: {
+    PoorSQL?: {
       format: (sql: string, options?: any) => string;
-      formatFull?: (sql: string, options?: any) => { text: string; html: string; errorFound: boolean; };
-    };
-    PoorMansTSqlFormatterLib?: {
-      formatSql: (sql: string, options?: any) => { text: string; html: string; errorFound: boolean; };
+      formatFull: (sql: string, options?: any) => { text: string; html: string; errorFound: boolean; };
     };
   }
 }

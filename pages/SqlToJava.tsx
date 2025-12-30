@@ -12,7 +12,7 @@ const SqlToJava: React.FC = () => {
   const [hibernateOutput, setHibernateOutput] = useState('');
   
   const [options, setOptions] = useState({
-    formatMethod: 'local' as 'local' | 'iframe' | 'manual',
+    formatMethod: 'poorsql' as 'poorsql' | 'manual',
     camelCaseAs: false,
     generateHibernate: true
   });
@@ -26,49 +26,35 @@ const SqlToJava: React.FC = () => {
     let resultHtml = '';
     let resultText = inputSql;
 
-    if (options.formatMethod === 'local') {
-      try {
-        // Priority 1: Check for the internal library exposed by the new poorsql.js
-        if (typeof window.PoorMansTSqlFormatterLib !== 'undefined') {
-            const result = window.PoorMansTSqlFormatterLib.formatSql(inputSql, {
-                indent: "    ",
-                spacesPerTab: 4,
-                maxLineWidth: 999,
-                includeHtml: true,
-                coloring: true
-            });
-            resultText = result.text;
-            resultHtml = result.html;
-        } 
-        // Priority 2: Check for the legacy global wrapper (PoorSQL) with full format support
-        else if (typeof window.PoorSQL !== 'undefined' && window.PoorSQL.formatFull) {
-            const result = window.PoorSQL.formatFull(inputSql, {
-                indent: "    ",
-                spacesPerTab: 4,
-                maxLineWidth: 999,
-                includeHtml: true,
-                coloring: true
-            });
-            resultText = result.text;
-            resultHtml = result.html;
-        }
-        else if (typeof window.PoorSQL !== 'undefined' && window.PoorSQL.format) {
-             // Fallback to text only
-             resultText = window.PoorSQL.format(inputSql);
-             resultHtml = ''; // No HTML available
+    try {
+      if (options.formatMethod === 'poorsql') {
+        if (typeof window.PoorSQL !== 'undefined' && window.PoorSQL.formatFull) {
+          // Use PoorSQL formatFull to get both text and HTML
+          const result = window.PoorSQL.formatFull(inputSql, {
+            indent: "    ",
+            spacesPerTab: 4,
+            maxLineWidth: 999,
+            includeHtml: true,
+            coloring: true
+          });
+          
+          resultText = result.text;
+          resultHtml = result.html;
         } else {
-          console.warn('PoorSQL library not found, using raw SQL');
+          console.warn('PoorSQL library not loaded. Ensure /poorsql.js is accessible.');
+          // Fallback simple format if possible or just use raw
+          resultText = inputSql;
+          resultHtml = '';
         }
-      } catch (e) {
-        console.error('Formatting failed', e);
-        // Fallback to raw SQL on error
-        resultText = inputSql;
-        resultHtml = '';
+      } else {
+          // Manual mode
+          resultText = inputSql;
+          resultHtml = '';
       }
-    } else {
-        // Manual mode
-        resultText = inputSql;
-        resultHtml = '';
+    } catch (e) {
+      console.error('Formatting failed', e);
+      resultText = inputSql;
+      resultHtml = '';
     }
 
     setFormattedText(resultText);
@@ -90,10 +76,8 @@ const SqlToJava: React.FC = () => {
     if (!match) return sql;
     
     const fieldsString = match[2];
-    // This is a naive implementation
     const processedFields = fieldsString.split(',').map(field => {
       const trimmedField = field.trim();
-      // Skip if already has alias or is complex/function without clear column name
       if (trimmedField.toUpperCase().includes(' AS ') || !trimmedField.includes('.')) return field;
       
       const parts = trimmedField.split('.');
@@ -118,16 +102,11 @@ const SqlToJava: React.FC = () => {
     // 2. Generate sb.append
     const lines = processedSql.split('\n').map(line => {
       if (!line.trim()) return null;
-      // Escape quotes
-      const escapedCode = line.replace(/"/g, '\\"').trim(); // preserve trailing spaces for safety
+      const escapedCode = line.replace(/"/g, '\\"').trim(); 
       
-      // Preserve original indentation for readability in Java code
-      // We grab the whitespace at the start of the line
       const originalIndentMatch = line.match(/^(\s*)/);
       const originalIndent = originalIndentMatch ? originalIndentMatch[1] : "";
-      
       const trimmedCode = line.trim();
-      
       return `sb.append(" ${originalIndent}${trimmedCode} ");`;
     }).filter(Boolean);
     
@@ -143,9 +122,7 @@ const SqlToJava: React.FC = () => {
             const asMatch = cleanField.match(/\s+AS\s+(\w+)/i);
             if (asMatch) return asMatch[1];
             
-            // Extract raw column name if no alias
             let fieldName = cleanField.includes('.') ? cleanField.split('.').pop() || '' : cleanField;
-            // Remove function wrappers usually leaving the core name - crude heuristic
             fieldName = fieldName.replace(/[^\w]/g, ''); 
             return fieldName;
           }).filter(Boolean);
@@ -205,13 +182,13 @@ const SqlToJava: React.FC = () => {
               <input 
                 type="radio" 
                 name="formatMethod" 
-                checked={options.formatMethod === 'local'}
-                onChange={() => setOptions({...options, formatMethod: 'local'})}
+                checked={options.formatMethod === 'poorsql'}
+                onChange={() => setOptions({...options, formatMethod: 'poorsql'})}
                 className="accent-blue-500 w-5 h-5"
               />
               <div className="group-hover:text-blue-300 transition-colors">
-                <p className="font-medium">🗂️ 本地 Poor SQL (CDN)</p>
-                <p className="text-xs text-gray-500">使用外部庫進行格式化與變色</p>
+                <p className="font-medium">✨ PoorSQL 格式化</p>
+                <p className="text-xs text-gray-500">使用本地庫進行格式化與變色</p>
               </div>
             </label>
             <label className="flex items-center gap-3 cursor-pointer group">
@@ -269,7 +246,7 @@ const SqlToJava: React.FC = () => {
 
       <div className="border-t border-gray-700/50 pt-8 space-y-6">
         <OutputBox 
-            title="格式化後 SQL (Poor SQL)" 
+            title="格式化後 SQL" 
             content={formattedHtml || formattedText} 
             isHtml={!!formattedHtml}
         />

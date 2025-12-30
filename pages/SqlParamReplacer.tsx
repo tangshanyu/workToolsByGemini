@@ -40,19 +40,14 @@ const SqlParamReplacer: React.FC = () => {
     params.forEach(param => {
       const val = paramValues[param];
       if (val !== undefined && val !== '') {
-        // Simple replace for all occurrences. 
-        // Need to escape regex special chars if param had them, but 'Parm\d+' is safe.
-        // We replace with single quoted value: 'Value'
-        // Handle single quote escaping in value
         const escapedValue = val.replace(/'/g, "''");
-        // Use split/join instead of replaceAll for broader compatibility
         result = result.split(param).join(`'${escapedValue}'`);
       }
     });
 
-    // Attempt to format the result using global PoorSQL if available
+    // Optional: Try to format using PoorSQL if available
     try {
-        if (typeof window.PoorSQL !== 'undefined' && window.PoorSQL.format) {
+        if (typeof window.PoorSQL !== 'undefined') {
              result = window.PoorSQL.format(result);
         }
     } catch(e) {
