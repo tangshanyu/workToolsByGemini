@@ -14,18 +14,11 @@ export const Button: React.FC<ButtonProps> = ({
 }) => {
   const baseStyles = "px-5 py-2 rounded-full font-medium text-sm transition-colors duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-offset-studio-bg";
   
-  // Google Studio inspired button styles
-  const variants = {
-    primary: "bg-[#A8C7FA] hover:bg-[#8AB4F8] text-[#041E49] dark:bg-[#A8C7FA] dark:hover:bg-[#8AB4F8] dark:text-[#041E49] bg-blue-600 text-white hover:bg-blue-700", 
-    secondary: "bg-transparent border border-studio-border text-studio-text hover:bg-studio-surface dark:border-studio-border dark:text-studio-text dark:hover:bg-studio-surface text-gray-700 border-gray-300 hover:bg-gray-100",
-    danger: "bg-red-200 text-red-900 hover:bg-red-300 dark:bg-[#5C1D1D] dark:text-[#F2B8B5] dark:hover:bg-[#601410] dark:border dark:border-[#F2B8B5]/30",
-    ghost: "bg-transparent text-studio-primary hover:bg-studio-surface/50"
-  };
-
   const modeVariant = {
       primary: "dark:bg-[#A8C7FA] dark:text-[#041E49] dark:hover:bg-[#D3E3FD] bg-blue-600 text-white hover:bg-blue-700",
       secondary: "dark:bg-transparent dark:border dark:border-[#5f6368] dark:text-[#E8EAED] dark:hover:bg-[#303134] bg-white border border-gray-300 text-gray-700 hover:bg-gray-50",
-      danger: "dark:bg-[#410e0b] dark:text-[#f2b8b5] dark:hover:bg-[#5c1d1d] text-red-600 hover:bg-red-50",
+      // Fix: Danger button now has a background in light mode instead of being transparent
+      danger: "dark:bg-[#410e0b] dark:text-[#f2b8b5] dark:hover:bg-[#5c1d1d] bg-red-100 text-red-900 hover:bg-red-200 border border-transparent",
       ghost: "dark:text-[#A8C7FA] dark:hover:bg-[#A8C7FA]/10 text-blue-600 hover:bg-blue-50"
   }
 
@@ -60,6 +53,7 @@ export const TextArea: React.FC<TextAreaProps> = ({ label, monospace = true, cla
 // --- Input ---
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
+  className?: string;
 }
 
 export const Input: React.FC<InputProps> = ({ label, className = '', ...props }) => {

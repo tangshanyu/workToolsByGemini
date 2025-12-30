@@ -34,6 +34,15 @@ const SqlQuestionMark: React.FC = () => {
         result = result.replace(/\?/, `'${param}'`);
       });
 
+      // Auto-format using PoorSQL if available
+      try {
+        if (typeof window.PoorSQL !== 'undefined') {
+             result = window.PoorSQL.format(result);
+        }
+      } catch(e) {
+          console.warn("Formatting failed, using raw output");
+      }
+
       setOutput(result);
     } catch (error: any) {
       alert("參數解析錯誤：" + error.message);
@@ -64,7 +73,7 @@ const SqlQuestionMark: React.FC = () => {
       />
 
       <Button onClick={handleConvert} variant="danger" className="w-full md:w-auto">
-        🚀 轉換
+        🚀 轉換並格式化
       </Button>
 
       <OutputBox title="✨ 轉換後的 SQL" content={output} />

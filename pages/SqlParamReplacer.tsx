@@ -8,20 +8,37 @@ const SqlParamReplacer: React.FC = () => {
   const [output, setOutput] = useState('');
 
   const extractParams = () => {
-    // Match 'Parm1', 'Parm2', etc.
-    const matches = sql.match(/'Parm\d+'/g);
+    // Match 'Parm1', 'Parm2', '%Parm1%', 'Parm1%', '%Parm1'
+    // Regex explanation:
+    // '       : Start quote
+    // (%?)    : Optional leading % (Capture group 1 - but we handle extraction manually)
+    // Parm\d+ : The parameter name
+    // (%?)    : Optional trailing %
+    // '       : End quote
+    const matches = sql.match(/'%?Parm\d+%?'/g);
     if (!matches) {
       setParams([]);
-      alert("未找到 'ParmX' 格式的參數");
+      alert("未找到 'ParmX' 或 '%ParmX%' 格式的參數");
       return;
     }
-    const uniqueParams = Array.from(new Set(matches));
-    setParams(uniqueParams.sort());
+
+    // Extract core param names (e.g., '%Parm1%' -> 'Parm1')
+    const uniqueKeys = new Set<string>();
+    matches.forEach(match => {
+        // Remove quotes and wildcards to get the core variable name
+        const coreName = match.replace(/'/g, '').replace(/^%/, '').replace(/%$/, '');
+        uniqueKeys.add(coreName);
+    });
+
+    const sortedParams = Array.from(uniqueKeys).sort();
+    setParams(sortedParams);
     
-    // Initialize values map
-    const initialValues: Record<string, string> = {};
-    uniqueParams.forEach((p: string) => initialValues[p] = '');
-    setParamValues(initialValues);
+    // Initialize values map, preserve existing values if key exists
+    const newValues: Record<string, string> = {};
+    sortedParams.forEach((p: string) => {
+        newValues[p] = paramValues[p] || '';
+    });
+    setParamValues(newValues);
   };
 
   const handleParamValueChange = (param: string, value: string) => {
@@ -37,11 +54,20 @@ const SqlParamReplacer: React.FC = () => {
         return;
     }
 
-    params.forEach(param => {
-      const val = paramValues[param];
+    params.forEach(key => {
+      const val = paramValues[key];
       if (val !== undefined && val !== '') {
         const escapedValue = val.replace(/'/g, "''");
-        result = result.split(param).join(`'${escapedValue}'`);
+        
+        // Create regex to match this specific parameter with potential wildcards
+        // matches: 'Parm1', '%Parm1', 'Parm1%', '%Parm1%'
+        // Capturing groups: 
+        // 1: Leading % (or empty)
+        // 2: Trailing % (or empty)
+        const regex = new RegExp(`'((?:%)?)${key}((?:%)?)'`, 'g');
+        
+        // Replace preserving the captured wildcards
+        result = result.replace(regex, `'$1${escapedValue}$2'`);
       }
     });
 
@@ -60,12 +86,12 @@ const SqlParamReplacer: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="bg-blue-50/50 dark:bg-[#004A77]/20 border border-blue-200 dark:border-[#004A77] p-4 rounded-lg text-blue-800 dark:text-[#C2E7FF] text-sm">
-        <strong>✨ 使用說明：</strong> 輸入包含 <code>'Parm1'</code>, <code>'Parm2'</code> 等參數的 SQL 語句，點擊「🔍 掃描參數」，填入值後執行替換。
+        <strong>✨ 使用說明：</strong> 輸入包含 <code>'Parm1'</code>, <code>'%Parm2%'</code> (模糊搜尋) 等參數的 SQL 語句，點擊「🔍 掃描參數」，填入值後執行替換。
       </div>
 
       <TextArea 
         label="📝 輸入 SQL："
-        placeholder="SELECT * FROM Table WHERE ID = 'Parm1' AND Date = 'Parm2'..."
+        placeholder="SELECT * FROM Table WHERE ID = 'Parm1' AND Name LIKE '%Parm2%'..."
         value={sql}
         onChange={(e) => setSql(e.target.value)}
       />
@@ -73,12 +99,14 @@ const SqlParamReplacer: React.FC = () => {
       <Button onClick={extractParams} className="w-full md:w-auto">🔍 掃描參數</Button>
 
       {params.length > 0 && (
-        <div className="std-panel p-6 rounded-xl border-t-4 border-blue-500">
-            <h3 className="font-bold mb-4 text-lg text-gray-800 dark:text-[#E8EAED]">⚙️ 參數輸入</h3>
+        <div className="std-panel p-5 rounded-xl">
+            <h3 className="font-bold mb-4 text-sm text-gray-700 dark:text-[#E8EAED] uppercase tracking-wider flex items-center gap-2">
+                ⚙️ 參數輸入
+            </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {params.map(param => (
                     <div key={param} className="flex flex-col gap-1">
-                        <label className="text-sm text-gray-500 dark:text-[#9AA0A6] font-mono">{param}</label>
+                        <label className="text-xs font-medium text-gray-500 dark:text-[#9AA0A6] font-mono ml-1">{param}</label>
                         <Input 
                             value={paramValues[param]} 
                             onChange={(e) => handleParamValueChange(param, e.target.value)}
