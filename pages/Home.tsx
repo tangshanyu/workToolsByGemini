@@ -24,8 +24,8 @@ const Home: React.FC = () => {
       color: 'border-orange-500/50 hover:border-orange-500'
     },
     {
-      title: '📦 物件轉換工具',
-      desc: "將 JavaScript 參數串轉換成 amPopUpWindowPost 物件格式，支援自動解析 URL 和參數。",
+      title: '🐪 駝峰命名轉換工具',
+      desc: "雙向轉換工具：可將資料庫欄位 (USER_ID) 轉換為 Java 變數 (userId)，或反向轉換，支援多行批次處理與即時預覽。",
       path: '/obj-converter',
       color: 'border-purple-500/50 hover:border-purple-500'
     }
@@ -34,8 +34,8 @@ const Home: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto">
       <div className="text-center mb-12">
-        <h2 className="text-2xl font-bold mb-4">歡迎使用 SQL 工具集</h2>
-        <p className="text-gray-400">這是一套專為開發者設計的工具集合，採用現代化的液體玻璃設計風格，幫助您更高效地進行開發工作。</p>
+        <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-100">歡迎使用 SQL 工具集</h2>
+        <p className="text-gray-600 dark:text-gray-400">這是一套專為開發者設計的工具集合，採用現代化的液體玻璃設計風格，幫助您更高效地進行開發工作。</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -43,14 +43,14 @@ const Home: React.FC = () => {
           <div 
             key={tool.path}
             onClick={() => navigate(tool.path)}
-            className={`glass-panel p-6 rounded-xl cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-xl border ${tool.color} group`}
+            className={`glass-panel p-6 rounded-xl cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-xl border ${tool.color} group bg-white/40 dark:bg-surface/40`}
           >
-            <h3 className="text-xl font-bold mb-3 text-gray-200 group-hover:text-white">{tool.title}</h3>
-            <p className="text-gray-400 text-sm leading-relaxed mb-6">
+            <h3 className="text-xl font-bold mb-3 text-gray-800 dark:text-gray-200 group-hover:text-blue-600 dark:group-hover:text-white transition-colors">{tool.title}</h3>
+            <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed mb-6">
               {tool.desc}
             </p>
             <div className="text-right">
-              <span className="text-sm font-semibold text-blue-400 group-hover:text-blue-300">開始使用 →</span>
+              <span className="text-sm font-semibold text-blue-600 dark:text-blue-400 group-hover:text-blue-500 dark:group-hover:text-blue-300">開始使用 →</span>
             </div>
           </div>
         ))}

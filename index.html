@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-TW" class="dark">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -7,11 +7,15 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
+        darkMode: 'class',
         theme: {
           extend: {
             colors: {
               surface: '#30363d',
               border: '#4c545d',
+              // Light mode specific colors
+              lightSurface: '#ffffff',
+              lightBorder: '#e5e7eb',
             },
             fontFamily: {
               mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
@@ -22,31 +26,70 @@
     </script>
     <style>
       body {
-        background-color: #0D1117;
-        color: #E6EDF3;
         margin: 0;
         padding: 0;
+        transition: background-color 0.3s ease, color 0.3s ease;
       }
+      
+      /* Dark Mode Styles (Default) */
+      .dark body {
+        background-color: #0D1117;
+        color: #E6EDF3;
+      }
+
+      /* Light Mode Styles */
+      body {
+        background-color: #F3F4F6;
+        color: #1F2937;
+      }
+
       .glass-panel {
-        background: rgba(48, 54, 61, 0.6);
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
+        transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+      }
+
+      .dark .glass-panel {
+        background: rgba(48, 54, 61, 0.6);
         border: 1px solid rgba(76, 84, 93, 0.5);
       }
+
+      body:not(.dark) .glass-panel {
+        background: rgba(255, 255, 255, 0.7);
+        border: 1px solid rgba(229, 231, 235, 0.8);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      }
+
       /* Custom Scrollbar */
       ::-webkit-scrollbar {
         width: 8px;
         height: 8px;
       }
       ::-webkit-scrollbar-track {
-        background: rgba(13, 17, 23, 0.5); 
+        background: transparent; 
       }
       ::-webkit-scrollbar-thumb {
-        background: rgba(88, 166, 255, 0.3); 
         border-radius: 4px;
       }
-      ::-webkit-scrollbar-thumb:hover {
+      
+      .dark ::-webkit-scrollbar-track {
+        background: rgba(13, 17, 23, 0.5);
+      }
+      .dark ::-webkit-scrollbar-thumb {
+        background: rgba(88, 166, 255, 0.3); 
+      }
+      .dark ::-webkit-scrollbar-thumb:hover {
         background: rgba(88, 166, 255, 0.5); 
+      }
+
+      body:not(.dark) ::-webkit-scrollbar-track {
+        background: rgba(229, 231, 235, 0.5);
+      }
+      body:not(.dark) ::-webkit-scrollbar-thumb {
+        background: rgba(156, 163, 175, 0.5); 
+      }
+      body:not(.dark) ::-webkit-scrollbar-thumb:hover {
+        background: rgba(107, 114, 128, 0.6); 
       }
 
       /* SQL Coloring - Restore CSS classes required by PoorSQL */
@@ -56,16 +99,30 @@
         word-break: break-all;
         font-size: 14px;
         line-height: 1.5;
+        color: #1f2937; /* Default light mode text */
       }
-      .SQLKeyword { color: #569CD6; font-weight: bold; }
-      .SQLString { color: #CE9178; }
-      .SQLFunction { color: #DCDCAA; }
-      .SQLOperator { color: #D4D4D4; }
-      .SQLComment { color: #6A9955; font-style: italic; }
-      .SQLErrorHighlight { background-color: #5a1d1d; border-bottom: 2px solid #ff0000; }
+      .dark .SQLCode {
+        color: #d4d4d4; /* Default dark mode text */
+      }
+      
+      /* Dark Mode Syntax Highlighting */
+      .dark .SQLKeyword { color: #569CD6 !important; font-weight: bold; }
+      .dark .SQLString { color: #CE9178 !important; }
+      .dark .SQLFunction { color: #DCDCAA !important; }
+      .dark .SQLOperator { color: #D4D4D4 !important; }
+      .dark .SQLComment { color: #6A9955 !important; font-style: italic; }
+      .dark .SQLErrorHighlight { background-color: #5a1d1d !important; border-bottom: 2px solid #ff0000; }
+
+      /* Light Mode Syntax Highlighting */
+      body:not(.dark) .SQLKeyword { color: #0000FF !important; font-weight: bold; }
+      body:not(.dark) .SQLString { color: #A31515 !important; }
+      body:not(.dark) .SQLFunction { color: #795E26 !important; }
+      body:not(.dark) .SQLOperator { color: #000000 !important; }
+      body:not(.dark) .SQLComment { color: #008000 !important; font-style: italic; }
+      body:not(.dark) .SQLErrorHighlight { background-color: #ffcccc !important; border-bottom: 2px solid #ff0000; }
     </style>
     
-    <!-- Load local PoorSQL library directly with relative path -->
+    <!-- Load local PoorSQL library directly -->
     <script src="./poorsql.js"></script>
 
     <script type="importmap">
