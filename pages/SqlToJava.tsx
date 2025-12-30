@@ -210,8 +210,8 @@ const SqlToJava: React.FC = () => {
                 className="accent-blue-500 w-5 h-5"
               />
               <div className="group-hover:text-blue-300 transition-colors">
-                <p className="font-medium">🗂️ 本地 Poor SQL (完整版)</p>
-                <p className="text-xs text-gray-500">支援語法高亮與格式化</p>
+                <p className="font-medium">🗂️ 本地 Poor SQL (CDN)</p>
+                <p className="text-xs text-gray-500">使用外部庫進行格式化與變色</p>
               </div>
             </label>
             <label className="flex items-center gap-3 cursor-pointer group">
