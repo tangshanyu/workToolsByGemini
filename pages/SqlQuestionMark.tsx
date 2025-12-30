@@ -42,9 +42,9 @@ const SqlQuestionMark: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="bg-green-500/10 border border-green-500/30 p-4 rounded-lg text-green-200 text-sm">
+      <div className="bg-green-50/50 dark:bg-[#0F5223]/20 border border-green-200 dark:border-[#0F5223] p-4 rounded-lg text-green-800 dark:text-[#C4EED0] text-sm">
         <strong>✨ 使用說明：</strong> 輸入包含問號 (?) 的 SQL 語句，並提供對應的參數陣列。
-        <div className="mt-2 p-2 bg-black/20 rounded font-mono text-xs">
+        <div className="mt-2 p-2 bg-white/50 dark:bg-black/20 rounded font-mono text-xs">
           參數範例：[15761, 02, BCTOM0001, 2024/06/04]
         </div>
       </div>

@@ -62,19 +62,14 @@ const SqlToJava: React.FC = () => {
             indent: "    ",
             spacesPerTab: 4,
             maxLineWidth: 999,
-            includeHtml: true,
-            coloring: true
+            includeHtml: false, // Standard version usually returns text
+            coloring: false
           };
-
-          if (window.PoorSQL.formatFull) {
-             // Use PoorSQL formatFull to get both text and HTML
-            const result = window.PoorSQL.formatFull(inputSql, formattingOptions);
-            resultText = result.text;
-            resultHtml = result.html;
-          } else if (window.PoorSQL.format) {
-            // Fallback for older version without formatFull
+          
+          // Using standard format method which returns string
+          if (window.PoorSQL.format) {
              resultText = window.PoorSQL.format(inputSql, formattingOptions);
-             // Cannot get HTML easily without formatFull in the specific version logic, so plain text only fallback
+             // Standard poorsql.js doesn't give HTML structure easily in the browser build unless using specific full formatter
              resultHtml = ''; 
           }
         } else {
@@ -197,104 +192,105 @@ const SqlToJava: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8">
-      <div className="space-y-4">
+    <div className="space-y-6 pb-20">
+      <div className="flex flex-col gap-2">
         <div className="flex justify-between items-end">
-          <h2 className="text-xl font-bold text-gray-200">原始 SQL 輸入</h2>
-          <Button variant="secondary" onClick={() => setInputSql(TEST_SQL)} className="text-xs py-1 px-3">
+          <h2 className="text-lg font-bold text-gray-700 dark:text-white">原始 SQL 輸入</h2>
+          <Button variant="ghost" onClick={() => setInputSql(TEST_SQL)} className="text-xs py-1 px-3">
             🧪 載入測試資料
           </Button>
         </div>
-        <TextArea 
-          value={inputSql}
-          onChange={(e) => setInputSql(e.target.value)}
-          placeholder="請在此輸入您的原始 SQL 語句..."
-        />
+        <div className="min-h-[200px]">
+             <TextArea 
+              value={inputSql}
+              onChange={(e) => setInputSql(e.target.value)}
+              placeholder="請在此輸入您的原始 SQL 語句..."
+              className="h-full"
+            />
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div className="glass-panel p-6 rounded-xl">
-          <h3 className="text-lg font-bold mb-4 text-blue-300">🎯 格式化選項</h3>
-          <div className="space-y-2">
-            <label className="flex items-center gap-3 cursor-pointer group">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="rounded-xl p-5 bg-white dark:bg-[#161618] border border-gray-200 dark:border-[#3c4043]">
+          <h3 className="text-base font-bold mb-3 text-blue-600 dark:text-[#A8C7FA]">🎯 格式化選項</h3>
+          <div className="space-y-3">
+            <label className="flex items-center gap-3 cursor-pointer group p-2 rounded hover:bg-gray-50 dark:hover:bg-[#2D2E31] transition-colors">
               <input 
                 type="radio" 
                 name="formatMethod" 
                 checked={options.formatMethod === 'poorsql'}
                 onChange={() => setOptions({...options, formatMethod: 'poorsql'})}
-                className="accent-blue-500 w-5 h-5"
+                className="accent-blue-600 dark:accent-[#A8C7FA] w-4 h-4"
               />
-              <div className="group-hover:text-blue-300 transition-colors">
+              <div className="flex-1">
                 <div className="flex items-center gap-2">
-                    <p className="font-medium">✨ PoorSQL 格式化</p>
+                    <p className="font-medium text-sm text-gray-800 dark:text-white">✨ PoorSQL 格式化</p>
                     {!isLibraryLoaded && (
-                        <span className="text-[10px] bg-red-500/20 text-red-400 px-2 py-0.5 rounded border border-red-500/30 animate-pulse">
+                        <span className="text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded">
                             載入中...
                         </span>
                     )}
                     {isLibraryLoaded && (
-                        <span className="text-[10px] bg-green-500/20 text-green-400 px-2 py-0.5 rounded border border-green-500/30">
+                        <span className="text-[10px] bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-300 px-1.5 py-0.5 rounded">
                             就緒
                         </span>
                     )}
                 </div>
-                <p className="text-xs text-gray-500">使用本地庫進行格式化與變色</p>
               </div>
             </label>
-            <label className="flex items-center gap-3 cursor-pointer group">
+            <label className="flex items-center gap-3 cursor-pointer group p-2 rounded hover:bg-gray-50 dark:hover:bg-[#2D2E31] transition-colors">
               <input 
                 type="radio" 
                 name="formatMethod" 
                 checked={options.formatMethod === 'manual'}
                 onChange={() => setOptions({...options, formatMethod: 'manual'})}
-                className="accent-blue-500 w-5 h-5"
+                className="accent-blue-600 dark:accent-[#A8C7FA] w-4 h-4"
               />
-              <div className="group-hover:text-blue-300 transition-colors">
-                <p className="font-medium">✋ 手動輸入</p>
-                <p className="text-xs text-gray-500">不進行自動格式化</p>
+              <div className="flex-1">
+                <p className="font-medium text-sm text-gray-800 dark:text-white">✋ 手動輸入</p>
               </div>
             </label>
           </div>
         </div>
 
-        <div className="glass-panel p-6 rounded-xl">
-          <h3 className="text-lg font-bold mb-4 text-green-300">⚙️ 轉換選項</h3>
-          <div className="space-y-4">
-            <label className="flex items-center gap-3 cursor-pointer select-none">
+        <div className="rounded-xl p-5 bg-white dark:bg-[#161618] border border-gray-200 dark:border-[#3c4043]">
+          <h3 className="text-base font-bold mb-3 text-purple-600 dark:text-[#D0BCFF]">⚙️ 轉換選項</h3>
+          <div className="space-y-3">
+            <label className="flex items-center gap-3 cursor-pointer select-none p-2 rounded hover:bg-gray-50 dark:hover:bg-[#2D2E31] transition-colors">
               <input 
                 type="checkbox" 
                 checked={options.camelCaseAs}
                 onChange={(e) => setOptions({...options, camelCaseAs: e.target.checked})}
-                className="w-5 h-5 rounded border-gray-600 bg-gray-700 accent-green-500"
+                className="w-4 h-4 rounded border-gray-300 dark:border-[#444746] bg-transparent"
               />
-              <span>🐪 SELECT 欄位使用駝峰命名 AS 別名</span>
+              <span className="text-sm text-gray-800 dark:text-white">🐫 SELECT 欄位使用駝峰命名 AS 別名</span>
             </label>
-            <label className="flex items-center gap-3 cursor-pointer select-none">
+            <label className="flex items-center gap-3 cursor-pointer select-none p-2 rounded hover:bg-gray-50 dark:hover:bg-[#2D2E31] transition-colors">
               <input 
                 type="checkbox" 
                 checked={options.generateHibernate}
                 onChange={(e) => setOptions({...options, generateHibernate: e.target.checked})}
-                className="w-5 h-5 rounded border-gray-600 bg-gray-700 accent-green-500"
+                className="w-4 h-4 rounded border-gray-300 dark:border-[#444746] bg-transparent"
               />
-              <span>🏗️ 產生 HibernateScalarHelper</span>
+              <span className="text-sm text-gray-800 dark:text-white">🏗️ 產生 HibernateScalarHelper</span>
             </label>
           </div>
         </div>
       </div>
 
-      <div className="flex gap-4 flex-wrap justify-center md:justify-start">
-        <Button onClick={handleExecuteAll} variant="warning" className="w-full md:w-auto">
+      <div className="flex gap-3 flex-wrap pt-4">
+        <Button onClick={handleExecuteAll} variant="primary">
           ⚡ 執行所有步驟
         </Button>
-        <Button onClick={handleFormatSql} variant="success" className="w-full md:w-auto">
+        <Button onClick={handleFormatSql} variant="secondary">
           🎨 僅格式化 SQL
         </Button>
-        <Button onClick={handleClear} variant="danger" className="w-full md:w-auto">
+        <Button onClick={handleClear} variant="danger">
           🗑️ 清空所有
         </Button>
       </div>
 
-      <div className="border-t border-gray-700/50 pt-8 space-y-6">
+      <div className="border-t border-gray-200 dark:border-[#444746] pt-8 space-y-8">
         <OutputBox 
             title="格式化後 SQL" 
             content={formattedHtml || formattedText} 

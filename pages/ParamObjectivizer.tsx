@@ -1,65 +1,64 @@
 import React, { useState, useEffect } from 'react';
 import { TextArea, Button } from '../components/UI';
 
-type ConversionMode = 'toCamel' | 'toSnake';
+type Mode = 'snakeToCamel' | 'camelToSnake';
 
 const CamelCaseConverter: React.FC = () => {
   const [input, setInput] = useState('');
   const [output, setOutput] = useState('');
-  const [mode, setMode] = useState<ConversionMode>('toCamel');
+  const [mode, setMode] = useState<Mode>('snakeToCamel');
   const [autoConvert, setAutoConvert] = useState(true);
 
   // Core Logic
-  const toCamelCase = (str: string): string => {
+  const snakeToCamel = (str: string): string => {
     return str
       .toLowerCase()
       .replace(/_([a-z0-9])/g, (_, group1) => group1.toUpperCase());
   };
 
-  const toSnakeCase = (str: string): string => {
-    // Check if the string is already all uppercase (treat as constant), 
-    // if so, don't just insert underscores, but this basic logic assumes camelCase input
+  const camelToSnake = (str: string): string => {
+    // Looks for capital letters, inserts underscore before them, then uppercases the whole thing
     return str
-      .replace(/([A-Z])/g, '_$1')
+      .replace(/([A-Z0-9])/g, '_$1')
       .toUpperCase()
-      .replace(/^_/, ''); // Remove leading underscore if string starts with uppercase
+      .replace(/^_/, ''); // Remove leading underscore if it started with uppercase
   };
 
-  const processConversion = () => {
-    if (!input) {
+  const processConversion = (currentInput: string, currentMode: Mode) => {
+    if (!currentInput) {
       setOutput('');
       return;
     }
 
-    const lines = input.split('\n');
+    const lines = currentInput.split('\n');
     const convertedLines = lines.map(line => {
       const trimmed = line.trim();
       if (!trimmed) return line;
 
-      // Simple heuristic: keep indentation
-      const indent = line.match(/^\s*/)?.[0] || '';
+      // Detect indentation
+      const indentMatch = line.match(/^\s*/);
+      const indent = indentMatch ? indentMatch[0] : '';
       
-      let converted = '';
-      if (mode === 'toCamel') {
-        converted = toCamelCase(trimmed);
+      let result = '';
+      if (currentMode === 'snakeToCamel') {
+        result = snakeToCamel(trimmed);
       } else {
-        converted = toSnakeCase(trimmed);
+        result = camelToSnake(trimmed);
       }
       
-      return indent + converted;
+      return indent + result;
     });
 
     setOutput(convertedLines.join('\n'));
   };
 
-  // Effects
+  // Effect for auto-convert
   useEffect(() => {
     if (autoConvert) {
-      processConversion();
+      processConversion(input, mode);
     }
   }, [input, mode, autoConvert]);
 
-  // Handlers
   const handleCopy = () => {
     navigator.clipboard.writeText(output);
   };
@@ -69,119 +68,135 @@ const CamelCaseConverter: React.FC = () => {
     setOutput('');
   };
 
+  const toggleMode = () => {
+      const newMode = mode === 'snakeToCamel' ? 'camelToSnake' : 'snakeToCamel';
+      setMode(newMode);
+      // Optional: Swap input/output if output exists, for fluid workflow
+      if (output) {
+          setInput(output);
+          processConversion(output, newMode);
+      }
+  };
+
   return (
-    <div className="space-y-6 h-full flex flex-col">
-      {/* Description & Controls Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white/50 dark:bg-gray-800/50 p-4 rounded-xl backdrop-blur-sm border border-gray-200 dark:border-gray-700">
+    <div className="flex flex-col h-full gap-6">
+      {/* Header / Toolbar */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white dark:bg-[#18181a] border border-gray-200 dark:border-[#3c4043] p-5 rounded-xl shadow-sm">
         <div>
-          <h2 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400">
-            🐪 駝峰命名轉換器
+          <h2 className="text-xl font-bold text-gray-800 dark:text-[#E8EAED] flex items-center gap-2">
+            <span className="text-2xl">🐪</span> 
+            物件命名轉換器
           </h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            支援多行批次處理：蛇形 (USER_ID) ↔ 駝峰 (userId)
+          <p className="text-sm text-gray-500 dark:text-[#9AA0A6] mt-1">
+            在資料庫欄位 (Snake_Case) 與 Java 物件屬性 (camelCase) 之間快速切換。
           </p>
         </div>
 
-        <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-900/80 p-1 rounded-lg shadow-inner">
+        <div className="flex items-center gap-3 bg-gray-100 dark:bg-[#202124] p-1.5 rounded-lg border border-gray-200 dark:border-[#3c4043]">
            <button
-            onClick={() => setMode('toCamel')}
-            className={`px-4 py-2 rounded-md text-sm font-bold transition-all duration-200 ${
-              mode === 'toCamel'
-                ? 'bg-white dark:bg-purple-600 text-purple-600 dark:text-white shadow-md'
-                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+            onClick={() => setMode('snakeToCamel')}
+            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+              mode === 'snakeToCamel'
+                ? 'bg-white dark:bg-[#004A77] text-blue-700 dark:text-[#C2E7FF] shadow-sm'
+                : 'text-gray-500 dark:text-[#9AA0A6] hover:text-gray-800 dark:hover:text-white'
             }`}
-          >
-            Snake ➔ Camel
-          </button>
-          <button
-            onClick={() => setMode('toSnake')}
-            className={`px-4 py-2 rounded-md text-sm font-bold transition-all duration-200 ${
-              mode === 'toSnake'
-                ? 'bg-white dark:bg-purple-600 text-purple-600 dark:text-white shadow-md'
-                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+           >
+             USER_ID ➔ userId
+           </button>
+           <button
+            onClick={() => setMode('camelToSnake')}
+            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+              mode === 'camelToSnake'
+                ? 'bg-white dark:bg-[#004A77] text-blue-700 dark:text-[#C2E7FF] shadow-sm'
+                : 'text-gray-500 dark:text-[#9AA0A6] hover:text-gray-800 dark:hover:text-white'
             }`}
-          >
-            Camel ➔ Snake
-          </button>
+           >
+             userId ➔ USER_ID
+           </button>
         </div>
       </div>
 
-      {/* Main Content Area */}
-      <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6 min-h-[400px]">
+      {/* Editor Area */}
+      <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 min-h-[400px]">
         {/* Input Panel */}
-        <div className="flex flex-col gap-2">
-          <div className="flex justify-between items-center px-2">
-            <label className="text-sm font-bold text-gray-500 dark:text-gray-400">
-              輸入 ({mode === 'toCamel' ? 'USER_ID' : 'userId'})
+        <div className="std-panel rounded-xl flex flex-col overflow-hidden">
+          <div className="flex justify-between items-center px-4 py-2 border-b border-gray-100 dark:border-[#3c4043] bg-gray-50 dark:bg-[#202124]">
+            <label className="text-xs font-bold text-gray-500 dark:text-[#9AA0A6] uppercase tracking-wider">
+              Input ({mode === 'snakeToCamel' ? 'Snake_Case' : 'camelCase'})
             </label>
             <button 
               onClick={handleClear}
-              className="text-xs text-red-500 hover:text-red-600 dark:hover:text-red-400 font-medium px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+              className="text-xs text-red-500 hover:text-red-700 dark:text-[#F2B8B5] dark:hover:text-[#F9DEDC] px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-[#410e0b] transition-colors"
             >
-              清除
+              Clear
             </button>
           </div>
-          <div className="flex-1 relative group">
+          <div className="flex-1 p-0 relative">
             <textarea
-              className="w-full h-full min-h-[300px] p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/50 text-gray-800 dark:text-gray-200 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all resize-none shadow-sm group-hover:shadow-md"
-              placeholder={mode === 'toCamel' ? "範例：\nUSER_ID\nCREATE_DATE\nIS_VALID" : "範例：\nuserId\ncreateDate\nisValid"}
+              className="w-full h-full p-4 bg-white dark:bg-[#0b0b0c] text-gray-800 dark:text-[#E8EAED] font-mono text-sm resize-none focus:outline-none"
+              placeholder={mode === 'snakeToCamel' ? "e.g.\nUSER_ID\nCREATE_DATE" : "e.g.\nuserId\ncreateDate"}
               value={input}
               onChange={(e) => setInput(e.target.value)}
+              spellCheck={false}
             />
           </div>
         </div>
 
         {/* Output Panel */}
-        <div className="flex flex-col gap-2">
-           <div className="flex justify-between items-center px-2">
-            <label className="text-sm font-bold text-gray-500 dark:text-gray-400">
-              結果 ({mode === 'toCamel' ? 'userId' : 'USER_ID'})
+        <div className="std-panel rounded-xl flex flex-col overflow-hidden border-blue-200 dark:border-[#3c4043]">
+          <div className="flex justify-between items-center px-4 py-2 border-b border-gray-100 dark:border-[#3c4043] bg-gray-50 dark:bg-[#202124]">
+            <label className="text-xs font-bold text-blue-600 dark:text-[#A8C7FA] uppercase tracking-wider">
+              Output ({mode === 'snakeToCamel' ? 'camelCase' : 'Snake_Case'})
             </label>
             <div className="flex gap-2">
                {!autoConvert && (
                  <button 
-                  onClick={processConversion} 
-                  className="text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-300 px-2 py-1 rounded hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors"
+                  onClick={() => processConversion(input, mode)} 
+                  className="text-xs bg-blue-50 dark:bg-[#004A77] text-blue-600 dark:text-[#C2E7FF] px-3 py-1 rounded hover:bg-blue-100 dark:hover:bg-[#005C94] transition-colors"
                 >
-                  執行轉換
+                  Convert
                 </button>
                )}
                <button 
                   onClick={handleCopy}
                   disabled={!output}
-                  className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 px-2 py-1 rounded hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="text-xs flex items-center gap-1 bg-gray-100 dark:bg-[#303134] text-gray-700 dark:text-[#E8EAED] px-3 py-1 rounded hover:bg-gray-200 dark:hover:bg-[#3c4043] transition-colors disabled:opacity-50"
                 >
-                  複製結果
+                  <span>📋</span> Copy
                 </button>
             </div>
           </div>
-          <div className="flex-1 relative">
+          <div className="flex-1 p-0 relative bg-gray-50 dark:bg-[#0e0e0f]">
             <textarea
               readOnly
-              className="w-full h-full min-h-[300px] p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-black/30 text-gray-800 dark:text-blue-200 font-mono text-sm focus:outline-none transition-all resize-none shadow-inner"
-              placeholder="轉換結果將顯示於此..."
+              className="w-full h-full p-4 bg-transparent text-gray-800 dark:text-[#A8C7FA] font-mono text-sm resize-none focus:outline-none"
+              placeholder="Result..."
               value={output}
             />
              {output && (
-              <div className="absolute bottom-4 right-4 text-xs text-gray-400 bg-white/80 dark:bg-black/40 px-2 py-1 rounded pointer-events-none">
-                {output.split('\n').length} 行已轉換
+              <div className="absolute bottom-3 right-4 text-xs text-gray-400 dark:text-[#9AA0A6]">
+                {output.split('\n').length} lines
               </div>
             )}
           </div>
         </div>
       </div>
       
-      {/* Settings Footer */}
-      <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400 px-2">
-         <label className="flex items-center gap-2 cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200 transition-colors">
+      {/* Footer Controls */}
+      <div className="flex items-center justify-between px-2">
+         <label className="flex items-center gap-2 cursor-pointer select-none text-sm text-gray-600 dark:text-[#9AA0A6] hover:text-gray-900 dark:hover:text-[#E8EAED] transition-colors">
             <input 
               type="checkbox" 
               checked={autoConvert}
               onChange={(e) => setAutoConvert(e.target.checked)}
-              className="rounded border-gray-300 dark:border-gray-600 text-purple-600 focus:ring-purple-500"
+              className="rounded border-gray-300 dark:border-[#3c4043] text-blue-600 focus:ring-blue-500 dark:bg-[#0b0b0c]"
             />
-            <span>⚡ 自動即時轉換</span>
+            <span>⚡ 自動即時轉換 (Real-time)</span>
          </label>
+
+         <button onClick={toggleMode} className="text-xs text-gray-400 dark:text-[#9AA0A6] hover:text-blue-500 dark:hover:text-[#A8C7FA] transition-colors">
+             ⇅ 交換輸入輸出
+         </button>
       </div>
     </div>
   );
