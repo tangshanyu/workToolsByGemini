@@ -74,10 +74,6 @@ interface OutputBoxProps {
 export const OutputBox: React.FC<OutputBoxProps> = ({ title, content, placeholder = "結果將顯示於此...", isHtml = false }) => {
   const handleCopy = () => {
     if (!content) return;
-    // For HTML content, we might want to copy the raw text, but strip tags first?
-    // Or just copy exactly what is passed. Usually user wants text.
-    // If it's HTML for display, we might want to copy plain text.
-    // Simple approach: create temp element to strip tags for copy if HTML.
     let textToCopy = content;
     if (isHtml) {
         const temp = document.createElement('div');
@@ -99,7 +95,7 @@ export const OutputBox: React.FC<OutputBoxProps> = ({ title, content, placeholde
           📋 複製 (純文字)
         </button>
       </div>
-      <div className="w-full bg-gray-900/80 border border-gray-700 rounded-lg p-4 font-mono text-xs md:text-sm text-gray-300 whitespace-pre overflow-x-auto min-h-[60px] max-h-[300px]">
+      <div className={`w-full bg-gray-900/80 border border-gray-700 rounded-lg p-4 font-mono text-xs md:text-sm text-gray-300 overflow-x-auto min-h-[60px] max-h-[500px] ${!isHtml ? 'whitespace-pre' : ''}`}>
         {content ? (
             isHtml ? <div className="SQLCode" dangerouslySetInnerHTML={{__html: content}} /> : content
         ) : (
