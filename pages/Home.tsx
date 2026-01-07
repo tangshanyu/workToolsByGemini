@@ -28,6 +28,12 @@ const Home: React.FC = () => {
       icon: '🐪',
       desc: "雙向轉換資料庫欄位 (USER_ID) 與 Java 屬性 (userId)，支援批次處理。",
       path: '/obj-converter',
+    },
+    {
+      title: '文件比對工具',
+      icon: '⚖️',
+      desc: "左右並排比對兩段文字或代碼的差異，支援行數統計與顏色高亮顯示。",
+      path: '/diff-viewer',
     }
   ];
 

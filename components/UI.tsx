@@ -42,7 +42,7 @@ export const TextArea: React.FC<TextAreaProps> = ({ label, monospace = true, cla
       <textarea
         className={`w-full flex-1 bg-white dark:bg-[#0b0b0c] border border-gray-300 dark:border-[#3c4043] rounded-md p-3 
         text-gray-900 dark:text-[#E8EAED] text-sm focus:outline-none focus:border-[#A8C7FA] focus:ring-1 focus:ring-[#A8C7FA] 
-        placeholder-gray-400 dark:placeholder-gray-600 transition-colors resize-none
+        placeholder-gray-400 dark:placeholder-gray-600 transition-colors resize-y min-h-[120px]
         ${monospace ? 'font-mono' : 'font-sans'} ${className}`}
         {...props}
       />
@@ -103,7 +103,7 @@ export const OutputBox: React.FC<OutputBoxProps> = ({ title, content, placeholde
           複製內容
         </button>
       </div>
-      <div className="flex-1 w-full bg-gray-50 dark:bg-[#000000] border border-gray-200 dark:border-[#3c4043] rounded-md p-3 overflow-auto min-h-[100px]">
+      <div className="flex-1 w-full bg-gray-50 dark:bg-[#000000] border border-gray-200 dark:border-[#3c4043] rounded-md p-3 overflow-auto min-h-[100px] max-h-[600px] resize-y">
         {content ? (
             <div className={`text-sm ${isHtml ? '' : 'font-mono whitespace-pre text-gray-900 dark:text-[#E8EAED]'}`}>
                {isHtml ? <div className="SQLCode" dangerouslySetInnerHTML={{__html: content}} /> : content}

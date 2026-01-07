@@ -8,6 +8,7 @@ const navItems: NavItem[] = [
   { path: '/question-mark', label: '問號轉換', icon: '❓' },
   { path: '/sql-to-java', label: 'Java 轉換', icon: '☕' },
   { path: '/obj-converter', label: '物件轉換', icon: '🐪' },
+  { path: '/diff-viewer', label: '文件比對', icon: '⚖️' },
 ];
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
