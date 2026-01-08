@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 
 // --- Button ---
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -17,7 +17,6 @@ export const Button: React.FC<ButtonProps> = ({
   const modeVariant = {
       primary: "dark:bg-[#A8C7FA] dark:text-[#041E49] dark:hover:bg-[#D3E3FD] bg-blue-600 text-white hover:bg-blue-700",
       secondary: "dark:bg-transparent dark:border dark:border-[#5f6368] dark:text-[#E8EAED] dark:hover:bg-[#303134] bg-white border border-gray-300 text-gray-700 hover:bg-gray-50",
-      // Fix: Danger button now has a background in light mode instead of being transparent
       danger: "dark:bg-[#410e0b] dark:text-[#f2b8b5] dark:hover:bg-[#5c1d1d] bg-red-100 text-red-900 hover:bg-red-200 border border-transparent",
       ghost: "dark:text-[#A8C7FA] dark:hover:bg-[#A8C7FA]/10 text-blue-600 hover:bg-blue-50"
   }
@@ -29,23 +28,62 @@ export const Button: React.FC<ButtonProps> = ({
   );
 };
 
-// --- TextArea ---
+// --- TextArea with Line Numbers ---
 interface TextAreaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   label?: string;
   monospace?: boolean;
 }
 
-export const TextArea: React.FC<TextAreaProps> = ({ label, monospace = true, className = '', ...props }) => {
+export const TextArea: React.FC<TextAreaProps> = ({ label, monospace = true, className = '', value, onChange, ...props }) => {
+  const [lineCount, setLineCount] = useState(1);
+  const textAreaRef = useRef<HTMLTextAreaElement>(null);
+  const lineNumbersRef = useRef<HTMLDivElement>(null);
+
+  // Calculate lines whenever value changes
+  useEffect(() => {
+    if (value !== undefined) {
+      const lines = (typeof value === 'string' ? value : '').split('\n').length;
+      setLineCount(Math.max(1, lines));
+    }
+  }, [value]);
+
+  // Sync scroll
+  const handleScroll = () => {
+    if (textAreaRef.current && lineNumbersRef.current) {
+      lineNumbersRef.current.scrollTop = textAreaRef.current.scrollTop;
+    }
+  };
+
+  const lineNumbers = Array.from({ length: lineCount }, (_, i) => i + 1).join('\n');
+
   return (
     <div className="w-full h-full flex flex-col">
       {label && <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-[#E8EAED]">{label}</label>}
-      <textarea
-        className={`w-full flex-1 bg-white dark:bg-[#0b0b0c] border border-gray-300 dark:border-[#3c4043] rounded-md p-3 
-        text-gray-900 dark:text-[#E8EAED] text-sm focus:outline-none focus:border-[#A8C7FA] focus:ring-1 focus:ring-[#A8C7FA] 
-        placeholder-gray-400 dark:placeholder-gray-600 transition-colors resize-y min-h-[120px]
-        ${monospace ? 'font-mono' : 'font-sans'} ${className}`}
-        {...props}
-      />
+      
+      <div className={`flex-1 relative group border border-gray-300 dark:border-[#3c4043] rounded-md overflow-hidden focus-within:ring-1 focus-within:ring-[#A8C7FA] focus-within:border-[#A8C7FA] bg-white dark:bg-[#0b0b0c] ${className}`}>
+        
+        {/* Line Numbers Gutter */}
+        <div 
+          ref={lineNumbersRef}
+          className="absolute left-0 top-0 bottom-0 w-10 bg-gray-50 dark:bg-[#1e1e1e] border-r border-gray-200 dark:border-[#3c4043] text-right pr-2 pt-3 text-gray-400 dark:text-gray-600 text-sm font-mono overflow-hidden select-none"
+          aria-hidden="true"
+        >
+          <pre className="whitespace-pre-wrap font-mono text-sm leading-normal">{lineNumbers}</pre>
+        </div>
+
+        {/* Actual Text Area */}
+        <textarea
+          ref={textAreaRef}
+          value={value}
+          onChange={onChange}
+          onScroll={handleScroll}
+          className={`w-full h-full pl-12 p-3 bg-transparent text-gray-900 dark:text-[#E8EAED] text-sm focus:outline-none resize-y leading-normal min-h-[120px]
+          ${monospace ? 'font-mono' : 'font-sans'} whitespace-pre`}
+          style={{ resize: 'vertical' }} // Ensure resize handle is visible and works
+          spellCheck={false}
+          {...props}
+        />
+      </div>
     </div>
   );
 };

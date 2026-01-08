@@ -209,6 +209,7 @@ const DiffViewer: React.FC = () => {
   const [rightText, setRightText] = useState('');
   const [alignedRows, setAlignedRows] = useState<AlignedRow[] | null>(null);
   const [stats, setStats] = useState({ add: 0, del: 0 });
+  const [showDiffOnly, setShowDiffOnly] = useState(false);
 
   const handleCompare = () => {
     if (!leftText && !rightText) return;
@@ -256,72 +257,87 @@ const DiffViewer: React.FC = () => {
   const renderSideBySide = () => {
     if (!alignedRows) return null;
 
+    // Filter rows if "Show Diff Only" is checked
+    const rowsToRender = showDiffOnly 
+        ? alignedRows.filter(r => r.type !== 'eq') 
+        : alignedRows;
+
+    if (rowsToRender.length === 0 && alignedRows.length > 0) {
+         return (
+            <div className="p-8 text-center text-gray-500 dark:text-gray-400 bg-white dark:bg-[#1e1e1e] border border-gray-200 dark:border-[#3c4043] rounded-md">
+                文件內容完全相同，沒有差異。
+            </div>
+         )
+    }
+
     return (
-      <div className="w-full font-mono text-xs md:text-sm overflow-auto border border-gray-300 dark:border-[#3c4043] rounded-md bg-white dark:bg-[#1e1e1e]">
-         <table className="w-full border-collapse table-fixed">
-            <colgroup>
-                <col className="w-[40px] bg-gray-50 dark:bg-[#2d2e31] border-r border-gray-200 dark:border-[#3c4043]" />
-                <col className="w-[50%]" />
-                <col className="w-[40px] bg-gray-50 dark:bg-[#2d2e31] border-r border-gray-200 dark:border-[#3c4043] border-l" />
-                <col className="w-[50%]" />
-            </colgroup>
-            <tbody>
-                {alignedRows.map((row, idx) => {
-                    const { type, left, right, charDiff } = row;
-                    
-                    let rowClass = "border-b border-gray-100 dark:border-[#3c4043]/30 hover:bg-gray-50 dark:hover:bg-[#2a2b2e]";
-                    let leftCellClass = "whitespace-pre-wrap break-all p-1 px-2 align-top h-full";
-                    let rightCellClass = "whitespace-pre-wrap break-all p-1 px-2 align-top h-full";
-                    
-                    // Base Colors for the whole line (Light)
-                    if (type === 'del') {
-                        leftCellClass += " bg-red-50 dark:bg-[#3c1618] text-red-900 dark:text-[#E8EAED]";
-                        rightCellClass += " bg-gray-50/50 dark:bg-black/20"; // Empty filler
-                    } else if (type === 'ins') {
-                        leftCellClass += " bg-gray-50/50 dark:bg-black/20"; // Empty filler
-                        rightCellClass += " bg-green-50 dark:bg-[#0c2b15] text-green-900 dark:text-[#E8EAED]";
-                    } else if (type === 'mod') {
-                        leftCellClass += " bg-red-50/50 dark:bg-[#3c1618]/50 text-gray-800 dark:text-[#E8EAED]";
-                        rightCellClass += " bg-green-50/50 dark:bg-[#0c2b15]/50 text-gray-800 dark:text-[#E8EAED]";
-                    } else {
-                        leftCellClass += " text-gray-700 dark:text-[#E8EAED]";
-                        rightCellClass += " text-gray-700 dark:text-[#E8EAED]";
-                    }
+      <div className="w-full h-full min-h-[300px] flex flex-col font-mono text-xs md:text-sm border border-gray-300 dark:border-[#3c4043] rounded-md bg-white dark:bg-[#1e1e1e] overflow-hidden">
+         <div className="flex-1 overflow-auto">
+            <table className="w-full border-collapse table-fixed">
+                <colgroup>
+                    <col className="w-[40px] bg-gray-50 dark:bg-[#2d2e31] border-r border-gray-200 dark:border-[#3c4043]" />
+                    <col className="w-[50%]" />
+                    <col className="w-[40px] bg-gray-50 dark:bg-[#2d2e31] border-r border-gray-200 dark:border-[#3c4043] border-l" />
+                    <col className="w-[50%]" />
+                </colgroup>
+                <tbody>
+                    {rowsToRender.map((row, idx) => {
+                        const { type, left, right, charDiff } = row;
+                        
+                        let rowClass = "border-b border-gray-100 dark:border-[#3c4043]/30 hover:bg-gray-50 dark:hover:bg-[#2a2b2e]";
+                        let leftCellClass = "whitespace-pre-wrap break-all p-1 px-2 align-top h-full";
+                        let rightCellClass = "whitespace-pre-wrap break-all p-1 px-2 align-top h-full";
+                        
+                        // Base Colors for the whole line (Light)
+                        if (type === 'del') {
+                            leftCellClass += " bg-red-50 dark:bg-[#3c1618] text-red-900 dark:text-[#E8EAED]";
+                            rightCellClass += " bg-gray-50/50 dark:bg-black/20"; // Empty filler
+                        } else if (type === 'ins') {
+                            leftCellClass += " bg-gray-50/50 dark:bg-black/20"; // Empty filler
+                            rightCellClass += " bg-green-50 dark:bg-[#0c2b15] text-green-900 dark:text-[#E8EAED]";
+                        } else if (type === 'mod') {
+                            leftCellClass += " bg-red-50/50 dark:bg-[#3c1618]/50 text-gray-800 dark:text-[#E8EAED]";
+                            rightCellClass += " bg-green-50/50 dark:bg-[#0c2b15]/50 text-gray-800 dark:text-[#E8EAED]";
+                        } else {
+                            leftCellClass += " text-gray-700 dark:text-[#E8EAED]";
+                            rightCellClass += " text-gray-700 dark:text-[#E8EAED]";
+                        }
 
-                    return (
-                        <tr key={idx} className={rowClass}>
-                            {/* Left Line Number */}
-                            <td className="text-right text-gray-400 select-none p-1 pr-2 align-top text-[10px] pt-1.5">
-                                {left?.lineNumber}
-                            </td>
-                            
-                            {/* Left Content */}
-                            <td className={leftCellClass}>
-                                {type === 'mod' && charDiff ? (
-                                    renderHighlightedText(charDiff.left)
-                                ) : (
-                                    left?.text
-                                )}
-                            </td>
+                        return (
+                            <tr key={idx} className={rowClass}>
+                                {/* Left Line Number */}
+                                <td className="text-right text-gray-400 select-none p-1 pr-2 align-top text-[10px] pt-1.5">
+                                    {left?.lineNumber}
+                                </td>
+                                
+                                {/* Left Content */}
+                                <td className={leftCellClass}>
+                                    {type === 'mod' && charDiff ? (
+                                        renderHighlightedText(charDiff.left)
+                                    ) : (
+                                        left?.text
+                                    )}
+                                </td>
 
-                            {/* Right Line Number */}
-                            <td className="text-right text-gray-400 select-none p-1 pr-2 align-top text-[10px] pt-1.5">
-                                {right?.lineNumber}
-                            </td>
-                            
-                            {/* Right Content */}
-                            <td className={rightCellClass}>
-                                {type === 'mod' && charDiff ? (
-                                    renderHighlightedText(charDiff.right)
-                                ) : (
-                                    right?.text
-                                )}
-                            </td>
-                        </tr>
-                    );
-                })}
-            </tbody>
-         </table>
+                                {/* Right Line Number */}
+                                <td className="text-right text-gray-400 select-none p-1 pr-2 align-top text-[10px] pt-1.5">
+                                    {right?.lineNumber}
+                                </td>
+                                
+                                {/* Right Content */}
+                                <td className={rightCellClass}>
+                                    {type === 'mod' && charDiff ? (
+                                        renderHighlightedText(charDiff.right)
+                                    ) : (
+                                        right?.text
+                                    )}
+                                </td>
+                            </tr>
+                        );
+                    })}
+                </tbody>
+            </table>
+         </div>
       </div>
     );
   };
@@ -329,7 +345,7 @@ const DiffViewer: React.FC = () => {
   return (
     <div className="flex flex-col h-full gap-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white dark:bg-[#18181a] border border-gray-200 dark:border-[#3c4043] p-4 rounded-xl shadow-sm">
+      <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white dark:bg-[#18181a] border border-gray-200 dark:border-[#3c4043] p-4 rounded-xl shadow-sm shrink-0">
         <div>
             <h2 className="text-xl font-bold text-gray-800 dark:text-[#E8EAED] flex items-center gap-2">
                 <span className="text-2xl">⚖️</span> 文件比對工具
@@ -349,17 +365,17 @@ const DiffViewer: React.FC = () => {
       </div>
 
       {/* Input Area */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-[300px]">
-         <div className="flex flex-col h-full">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-[300px] shrink-0">
+         <div className="flex flex-col h-full overflow-hidden">
             <TextArea 
                 label="📄 原始文件 (Original)"
                 placeholder="貼上原始文字..."
                 value={leftText}
                 onChange={(e) => setLeftText(e.target.value)}
-                className="h-full resize-none" 
+                className="h-full" 
             />
          </div>
-         <div className="flex flex-col h-full">
+         <div className="flex flex-col h-full overflow-hidden">
             <TextArea 
                 label="📝 修改後文件 (Modified)"
                 placeholder="貼上修改後的文字..."
@@ -371,19 +387,33 @@ const DiffViewer: React.FC = () => {
       </div>
 
       {/* Controls */}
-      <div className="flex gap-3 justify-center md:justify-start">
-        <Button onClick={handleCompare} variant="primary">
-            🔍 開始比對
-        </Button>
-        <Button onClick={handleClear} variant="secondary">
-            🗑️ 清空
-        </Button>
+      <div className="flex gap-4 justify-between items-center shrink-0">
+         <div className="flex gap-3">
+            <Button onClick={handleCompare} variant="primary">
+                🔍 開始比對
+            </Button>
+            <Button onClick={handleClear} variant="secondary">
+                🗑️ 清空
+            </Button>
+        </div>
+        
+        {alignedRows && (
+            <label className="flex items-center gap-2 cursor-pointer select-none text-sm text-gray-700 dark:text-[#E8EAED] font-medium bg-white dark:bg-[#18181a] px-3 py-2 rounded-lg border border-gray-200 dark:border-[#3c4043] shadow-sm hover:bg-gray-50 dark:hover:bg-[#202124] transition-colors">
+                <input 
+                    type="checkbox" 
+                    checked={showDiffOnly} 
+                    onChange={(e) => setShowDiffOnly(e.target.checked)}
+                    className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                />
+                👀 僅顯示差異行
+            </label>
+        )}
       </div>
 
       {/* Results Area */}
       {alignedRows && (
-        <div className="flex-1 flex flex-col gap-2 min-h-[300px]">
-            <h3 className="text-sm font-medium text-gray-700 dark:text-[#E8EAED]">📊 比對結果</h3>
+        <div className="flex-1 flex flex-col gap-2 min-h-0 overflow-hidden">
+            <h3 className="text-sm font-medium text-gray-700 dark:text-[#E8EAED] shrink-0">📊 比對結果</h3>
             {renderSideBySide()}
         </div>
       )}
