@@ -9,10 +9,17 @@ const navItems: NavItem[] = [
   { path: '/sql-to-java', label: 'Java 轉換', icon: '☕' },
   { path: '/obj-converter', label: '物件轉換', icon: '🐪' },
   { path: '/diff-viewer', label: '文件比對', icon: '⚖️' },
+  { path: '/json-format', label: 'JSON 格式化', icon: '{}' },
 ];
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isDark, setIsDark] = useState(true);
+  const [isDark, setIsDark] = useState(() => {
+      // Check browser preference on initialization
+      if (typeof window !== 'undefined' && window.matchMedia) {
+          return window.matchMedia('(prefers-color-scheme: dark)').matches;
+      }
+      return true; // Default to dark if unknown
+  });
 
   useEffect(() => {
     const html = document.documentElement;
@@ -86,15 +93,15 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       </main>
 
       {/* Mobile Bottom Nav */}
-      <nav className="md:hidden border-t border-gray-200 dark:border-[#3c4043] bg-white dark:bg-[#18181a] flex justify-around p-2 text-xs safe-area-pb">
+      <nav className="md:hidden border-t border-gray-200 dark:border-[#3c4043] bg-white dark:bg-[#18181a] flex justify-around p-2 text-xs safe-area-pb overflow-x-auto">
           {navItems.map(item => (
             <NavLink 
               key={item.path} 
               to={item.path}
-              className={({isActive}) => `flex flex-col items-center gap-1 p-2 rounded-lg ${isActive ? 'text-blue-600 dark:text-[#A8C7FA]' : 'text-gray-500 dark:text-[#E3E3E3]'}`}
+              className={({isActive}) => `flex flex-col items-center gap-1 p-2 rounded-lg min-w-[60px] ${isActive ? 'text-blue-600 dark:text-[#A8C7FA]' : 'text-gray-500 dark:text-[#E3E3E3]'}`}
             >
               <span className="text-xl">{item.icon}</span>
-              <span className="scale-90">{item.label}</span>
+              <span className="scale-90 whitespace-nowrap">{item.label}</span>
             </NavLink>
           ))}
       </nav>

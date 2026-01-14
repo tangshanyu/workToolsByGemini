@@ -145,8 +145,9 @@ const CamelCaseConverter: React.FC = () => {
         {/* Output Panel */}
         <div className="std-panel rounded-xl flex flex-col overflow-hidden border-blue-200 dark:border-[#3c4043]">
           <div className="flex justify-between items-center px-4 py-2 border-b border-gray-100 dark:border-[#3c4043] bg-gray-50 dark:bg-[#202124]">
-            <label className="text-xs font-bold text-blue-600 dark:text-[#A8C7FA] uppercase tracking-wider">
+            <label className="text-xs font-bold text-blue-600 dark:text-[#A8C7FA] uppercase tracking-wider flex items-center gap-2">
               Output ({mode === 'snakeToCamel' ? 'camelCase' : 'Snake_Case'})
+              <span className="bg-blue-100 dark:bg-blue-900 text-[10px] px-1.5 py-0.5 rounded-full font-normal">Editable</span>
             </label>
             <div className="flex gap-2">
                {!autoConvert && (
@@ -168,13 +169,14 @@ const CamelCaseConverter: React.FC = () => {
           </div>
           <div className="flex-1 p-0 relative bg-gray-50 dark:bg-[#0e0e0f]">
             <textarea
-              readOnly
-              className="w-full h-full p-4 bg-transparent text-gray-800 dark:text-[#A8C7FA] font-mono text-sm resize-none focus:outline-none"
+              className="w-full h-full p-4 bg-transparent text-gray-800 dark:text-[#A8C7FA] font-mono text-sm resize-none focus:outline-none focus:bg-white dark:focus:bg-[#121214] transition-colors"
               placeholder="Result..."
               value={output}
+              onChange={(e) => setOutput(e.target.value)}
+              spellCheck={false}
             />
              {output && (
-              <div className="absolute bottom-3 right-4 text-xs text-gray-400 dark:text-[#9AA0A6]">
+              <div className="absolute bottom-3 right-4 text-xs text-gray-400 dark:text-[#9AA0A6] pointer-events-none">
                 {output.split('\n').length} lines
               </div>
             )}
