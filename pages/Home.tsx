@@ -34,6 +34,12 @@ const Home: React.FC = () => {
       icon: '⚖️',
       desc: "左右並排比對兩段文字或代碼的差異，支援行數統計與顏色高亮顯示。",
       path: '/diff-viewer',
+    },
+    {
+      title: 'JSON 格式化',
+      icon: '{}',
+      desc: "格式化與驗證 JSON 資料，支援解析 Java Map 格式 (toString) 與表格檢視模式。",
+      path: '/json-format',
     }
   ];
 

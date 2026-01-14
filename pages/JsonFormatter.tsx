@@ -25,15 +25,6 @@ const JsonFormatter: React.FC = () => {
       while (pos < str.length && /\s/.test(str[pos])) pos++;
     };
 
-    const matchChar = (c: string) => {
-      consumeWhitespace();
-      if (peek() === c) {
-        consume();
-        return true;
-      }
-      return false;
-    };
-
     const parseValue: () => any = () => {
       consumeWhitespace();
       const char = peek();
@@ -43,7 +34,6 @@ const JsonFormatter: React.FC = () => {
       
       // Handle explicit null
       if (str.startsWith('null', pos)) {
-          // check boundaries
           const nextChar = str[pos + 4];
           if (!nextChar || /[\s,}\]]/.test(nextChar)) {
               pos += 4;
@@ -65,17 +55,14 @@ const JsonFormatter: React.FC = () => {
       }
 
       while (pos < str.length) {
-        // Try to parse a value
         const val = parseValue();
         arr.push(val);
         
         consumeWhitespace();
         
-        // If we see a comma, consume it and look for next item
         if (peek() === ',') {
             consume();
             consumeWhitespace();
-            // If next is closing bracket, we are done (allow trailing comma logic if needed, or just loop)
             if (peek() === ']') {
                 consume();
                 return arr;
@@ -83,29 +70,17 @@ const JsonFormatter: React.FC = () => {
             continue;
         }
 
-        // If we see a closing bracket, we are done
         if (peek() === ']') {
             consume();
             return arr;
         }
 
-        // Error recovery / Tolerance:
-        // If we are here, we expected ',' or ']' but found something else.
-        // It might be garbage between items (like the ' in },' \n { case).
-        // Strategy: If we see a start of a new valid item ({ or [), assume a missing comma.
+        // Error recovery
         const nextChar = peek();
         if (nextChar === '{' || nextChar === '[') {
-            // Implicit comma, continue loop
             continue;
         }
-
-        // Otherwise, it's likely garbage or a malformed literal. 
-        // We force progress to avoid infinite loop.
-        // If we just parsed a literal, maybe the literal parser stopped too early?
-        // Let's just skip this character and try to continue.
-        if (pos < str.length) {
-             pos++; 
-        }
+        if (pos < str.length) pos++; 
       }
       return arr;
     };
@@ -124,13 +99,8 @@ const JsonFormatter: React.FC = () => {
         const key = parseKey();
         consumeWhitespace();
         
-        // Expect '='
         if (peek() === '=') {
             consume();
-        } else {
-            // If no '=', this might be a set or just a weird format. 
-            // Treat as key with null value or syntax error? 
-            // Let's assume standard map structure for now.
         }
 
         const val = parseValue();
@@ -152,13 +122,10 @@ const JsonFormatter: React.FC = () => {
             return obj;
         }
         
-        // Tolerance for missing commas
-        // If we see standard key chars, assume next key
         if (/[a-zA-Z0-9_]/.test(peek() || '')) {
             continue;
         }
         
-        // Force progress
         if (pos < str.length) pos++;
       }
       return obj;
@@ -167,7 +134,6 @@ const JsonFormatter: React.FC = () => {
     const parseKey = () => {
       consumeWhitespace();
       let start = pos;
-      // Read until =, comma, or end of block
       while (pos < str.length) {
           const c = str[pos];
           if (c === '=' || c === ',' || c === '}' || /\s/.test(c)) {
@@ -182,35 +148,20 @@ const JsonFormatter: React.FC = () => {
       consumeWhitespace();
       let start = pos;
       
-      // Heuristic: Read until standard separators.
-      // Valid separators in this context: , } ]
-      // Also stop if we hit something that looks like the start of a new map/list if we are lost?
-      // No, literals shouldn't contain { or [.
-      
       while (pos < str.length) {
           const c = str[pos];
           if (c === ',' || c === '}' || c === ']') {
               break;
           }
-          // Special case recovery: if we hit newline, usually a literal doesn't span lines in this toString format
-          // unless it's a long string. But for safety, let's include it.
           pos++;
       }
       
       let val = str.substring(start, pos).trim();
 
-      // Clean up common artifacts (like quotes if the user pasted valid JSON strings mixed in)
-      // But standard Map.toString() doesn't quote usually. 
-      // If the user pasted `...BOND},'` -> the literal might be `'`.
-
-      // Convert Types
       if (val === 'null') return null;
       if (val === 'true') return true;
       if (val === 'false') return false;
 
-      // Try numeric
-      // Rule: valid number, not empty, and NOT starting with 0 unless it is exactly "0" or "0.xxx"
-      // This preserves "0113" as string.
       if (val !== '' && !isNaN(Number(val))) {
           const isScientific = /e/i.test(val);
           const isLeadingZero = val.length > 1 && val.startsWith('0') && !val.includes('.');
@@ -240,15 +191,10 @@ const JsonFormatter: React.FC = () => {
       let usedMode = mode;
 
       if (mode === 'auto') {
-          // Simple heuristics
           const trimmed = input.trim();
-          const isJson = (trimmed.startsWith('{') || trimmed.startsWith('[')) && trimmed.includes('"');
-          // Java maps often use = for assignment and unquoted keys
+          // Java maps often use = for assignment and unquoted keys, or start with simple {key=
           const isJava = trimmed.includes('=') && !trimmed.includes('":');
-          
-          if (isJava) usedMode = 'java';
-          else usedMode = 'json';
-          
+          usedMode = isJava ? 'java' : 'json';
           setDetectedMode(usedMode);
       } else {
           setDetectedMode(null);
@@ -377,9 +323,9 @@ const JsonFormatter: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-full gap-6">
+    <div className="flex flex-col h-full gap-4">
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white dark:bg-[#18181a] border border-gray-200 dark:border-[#3c4043] p-4 rounded-xl shadow-sm">
+      <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white dark:bg-[#18181a] border border-gray-200 dark:border-[#3c4043] p-4 rounded-xl shadow-sm shrink-0">
         <div>
             <h2 className="text-xl font-bold text-gray-800 dark:text-[#E8EAED] flex items-center gap-2">
                 <span className="text-2xl">{}</span> JSON & Map Formatter
@@ -406,95 +352,92 @@ const JsonFormatter: React.FC = () => {
         </div>
       </div>
 
-      {/* Editor Area */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 h-[500px]">
-         {/* Input */}
-         <div className="flex flex-col h-full overflow-hidden">
-            <TextArea 
-                label={`📥 輸入 (${mode === 'auto' ? '自動偵測' : mode === 'json' ? 'JSON' : 'Java Map'})`}
-                placeholder="貼上你的資料..."
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                className="h-full font-mono text-xs" 
-            />
-         </div>
-
-         {/* Output */}
-         <div className="flex flex-col h-full overflow-hidden">
-            {/* Custom Header for OutputBox */}
-             <div className="flex justify-between items-center mb-2 px-1">
-                <div className="flex items-center gap-3">
-                    <h3 className="text-sm font-medium text-gray-700 dark:text-[#E8EAED]">解析結果</h3>
-                    {detectedMode && (
-                        <span className="bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-[10px] px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-800">
-                            已偵測: {detectedMode === 'java' ? 'Java Map' : 'JSON'}
-                        </span>
-                    )}
-                </div>
-                
-                {/* View Mode Toggle */}
-                <div className="flex bg-gray-200 dark:bg-[#303134] p-0.5 rounded-lg text-xs">
-                    <button
-                        onClick={() => setViewMode('text')}
-                        className={`px-3 py-1 rounded-md transition-all ${viewMode === 'text' ? 'bg-white dark:bg-[#004A77] text-gray-800 dark:text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'}`}
-                    >
-                        JSON (Text)
-                    </button>
-                    <button
-                        onClick={() => setViewMode('table')}
-                        className={`px-3 py-1 rounded-md transition-all ${viewMode === 'table' ? 'bg-white dark:bg-[#004A77] text-gray-800 dark:text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'}`}
-                    >
-                        Table
-                    </button>
-                </div>
-             </div>
-             
-            <div className={`flex-1 rounded-xl overflow-hidden border flex flex-col ${error ? 'border-red-300 dark:border-red-800' : 'border-green-200 dark:border-[#3c4043]'}`}>
-                
-                {viewMode === 'text' ? (
-                    <>
-                        <div className={`flex justify-between items-center px-4 py-2 border-b ${error ? 'bg-red-50 dark:bg-[#2a1212] border-red-200 dark:border-red-800' : 'bg-gray-50 dark:bg-[#202124] border-gray-100 dark:border-[#3c4043]'}`}>
-                            <label className={`text-xs font-bold uppercase tracking-wider flex items-center gap-2 ${error ? 'text-red-700 dark:text-red-300' : 'text-green-700 dark:text-[#C4EED0]'}`}>
-                                {error ? 'Error' : 'JSON Output'}
-                                {!error && <span className="bg-green-100 dark:bg-green-900 text-[10px] px-1.5 py-0.5 rounded-full font-normal text-green-800 dark:text-green-200">Editable</span>}
-                            </label>
-                            <button 
-                                onClick={() => navigator.clipboard.writeText(output)}
-                                disabled={!output || !!error}
-                                className="text-xs flex items-center gap-1 bg-white dark:bg-[#303134] border border-gray-200 dark:border-[#5f6368] text-gray-700 dark:text-[#E8EAED] px-3 py-1 rounded hover:bg-gray-50 dark:hover:bg-[#3c4043] transition-colors disabled:opacity-50"
-                            >
-                                <span>📋</span> 複製
-                            </button>
-                        </div>
-                        <div className="flex-1 p-0 relative bg-white dark:bg-[#0e0e0f] h-full">
-                            <textarea
-                                className={`w-full h-full p-4 bg-transparent font-mono text-sm resize-none focus:outline-none 
-                                ${error ? 'text-red-600 dark:text-red-400' : 'text-gray-800 dark:text-[#A8C7FA]'}`}
-                                placeholder="結果將顯示於此..."
-                                value={error ? error : output}
-                                onChange={(e) => setOutput(e.target.value)}
-                                spellCheck={false}
-                            />
-                        </div>
-                    </>
-                ) : (
-                    // Table Mode
-                    <div className="flex-1 bg-white dark:bg-[#0e0e0f] overflow-hidden flex flex-col">
-                         {renderTable()}
-                    </div>
-                )}
-             </div>
-         </div>
+      {/* Input */}
+      <div className="flex-1 min-h-[200px] flex flex-col overflow-hidden">
+        <TextArea 
+            label={`📥 輸入 (${mode === 'auto' ? '自動偵測' : mode === 'json' ? 'JSON' : 'Java Map'})`}
+            placeholder="貼上你的資料..."
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            className="h-full font-mono text-xs" 
+        />
       </div>
 
       {/* Controls */}
-      <div className="flex gap-3 justify-center md:justify-start">
+      <div className="flex gap-3 justify-center shrink-0">
         <Button onClick={processFormat} variant="primary">
             🚀 格式化 / 解析
         </Button>
         <Button onClick={handleClear} variant="secondary">
             🗑️ 清空
         </Button>
+      </div>
+
+      {/* Output */}
+      <div className="flex-[2] min-h-[200px] flex flex-col overflow-hidden">
+        {/* Custom Header for OutputBox */}
+         <div className="flex justify-between items-center mb-2 px-1">
+            <div className="flex items-center gap-3">
+                <h3 className="text-sm font-medium text-gray-700 dark:text-[#E8EAED]">解析結果</h3>
+                {detectedMode && (
+                    <span className="bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-[10px] px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-800">
+                        已偵測: {detectedMode === 'java' ? 'Java Map' : 'JSON'}
+                    </span>
+                )}
+            </div>
+            
+            {/* View Mode Toggle */}
+            <div className="flex bg-gray-200 dark:bg-[#303134] p-0.5 rounded-lg text-xs">
+                <button
+                    onClick={() => setViewMode('text')}
+                    className={`px-3 py-1 rounded-md transition-all ${viewMode === 'text' ? 'bg-white dark:bg-[#004A77] text-gray-800 dark:text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'}`}
+                >
+                    JSON (Text)
+                </button>
+                <button
+                    onClick={() => setViewMode('table')}
+                    className={`px-3 py-1 rounded-md transition-all ${viewMode === 'table' ? 'bg-white dark:bg-[#004A77] text-gray-800 dark:text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'}`}
+                >
+                    Table
+                </button>
+            </div>
+         </div>
+         
+        <div className={`flex-1 rounded-xl overflow-hidden border flex flex-col ${error ? 'border-red-300 dark:border-red-800' : 'border-green-200 dark:border-[#3c4043]'}`}>
+            
+            {viewMode === 'text' ? (
+                <>
+                    <div className={`flex justify-between items-center px-4 py-2 border-b ${error ? 'bg-red-50 dark:bg-[#2a1212] border-red-200 dark:border-red-800' : 'bg-gray-50 dark:bg-[#202124] border-gray-100 dark:border-[#3c4043]'}`}>
+                        <label className={`text-xs font-bold uppercase tracking-wider flex items-center gap-2 ${error ? 'text-red-700 dark:text-red-300' : 'text-green-700 dark:text-[#C4EED0]'}`}>
+                            {error ? 'Error' : 'JSON Output'}
+                            {!error && <span className="bg-green-100 dark:bg-green-900 text-[10px] px-1.5 py-0.5 rounded-full font-normal text-green-800 dark:text-green-200">Editable</span>}
+                        </label>
+                        <button 
+                            onClick={() => navigator.clipboard.writeText(output)}
+                            disabled={!output || !!error}
+                            className="text-xs flex items-center gap-1 bg-white dark:bg-[#303134] border border-gray-200 dark:border-[#5f6368] text-gray-700 dark:text-[#E8EAED] px-3 py-1 rounded hover:bg-gray-50 dark:hover:bg-[#3c4043] transition-colors disabled:opacity-50"
+                        >
+                            <span>📋</span> 複製
+                        </button>
+                    </div>
+                    <div className="flex-1 p-0 relative bg-white dark:bg-[#0e0e0f] h-full">
+                        <textarea
+                            className={`w-full h-full p-4 bg-transparent font-mono text-sm resize-none focus:outline-none 
+                            ${error ? 'text-red-600 dark:text-red-400' : 'text-gray-800 dark:text-[#A8C7FA]'}`}
+                            placeholder="結果將顯示於此..."
+                            value={error ? error : output}
+                            onChange={(e) => setOutput(e.target.value)}
+                            spellCheck={false}
+                        />
+                    </div>
+                </>
+            ) : (
+                // Table Mode
+                <div className="flex-1 bg-white dark:bg-[#0e0e0f] overflow-hidden flex flex-col">
+                     {renderTable()}
+                </div>
+            )}
+         </div>
       </div>
     </div>
   );
