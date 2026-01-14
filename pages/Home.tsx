@@ -1,84 +1,113 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { CATEGORIES, TOOLS } from '../config';
 
 const Home: React.FC = () => {
   const navigate = useNavigate();
+  const [searchTerm, setSearchTerm] = useState('');
 
-  const tools = [
-    {
-      title: 'SQL 參數替換',
-      icon: '🔧',
-      desc: "自動掃描 SQL 語句中的參數佔位符（如 'Parm1'），提供界面批量替換值。",
-      path: '/param-replace',
-    },
-    {
-      title: 'SQL 問號轉換',
-      icon: '❓',
-      desc: "將含有問號 (?) 的 SQL 語句轉換為實際參數值，支援陣列格式輸入。",
-      path: '/question-mark',
-    },
-    {
-      title: 'SQL 轉 Java',
-      icon: '☕',
-      desc: "將 SQL 轉換為 Java StringBuilder 格式，支援 Hibernate Scalar 生成。",
-      path: '/sql-to-java',
-    },
-    {
-      title: '物件命名轉換',
-      icon: '🐪',
-      desc: "雙向轉換資料庫欄位 (USER_ID) 與 Java 屬性 (userId)，支援批次處理。",
-      path: '/obj-converter',
-    },
-    {
-      title: '文件比對工具',
-      icon: '⚖️',
-      desc: "左右並排比對兩段文字或代碼的差異，支援行數統計與顏色高亮顯示。",
-      path: '/diff-viewer',
-    },
-    {
-      title: 'JSON 格式化',
-      icon: '{}',
-      desc: "格式化與驗證 JSON 資料，支援解析 Java Map 格式 (toString) 與表格檢視模式。",
-      path: '/json-format',
-    }
-  ];
+  // Filter logic
+  const filteredCategories = useMemo(() => {
+     if (!searchTerm.trim()) return CATEGORIES;
+
+     const term = searchTerm.toLowerCase();
+     // Find tools that match
+     const matchedTools = TOOLS.filter(t => 
+        t.label.toLowerCase().includes(term) || 
+        t.desc.toLowerCase().includes(term)
+     );
+     // Find categories that have at least one matched tool
+     const matchedCategoryIds = new Set(matchedTools.map(t => t.categoryId));
+     
+     return CATEGORIES.filter(c => matchedCategoryIds.has(c.id));
+  }, [searchTerm]);
+
+  const getToolsByCategory = (categoryId: string) => {
+      let tools = TOOLS.filter(t => t.categoryId === categoryId);
+      if (searchTerm.trim()) {
+          const term = searchTerm.toLowerCase();
+          tools = tools.filter(t => 
+            t.label.toLowerCase().includes(term) || 
+            t.desc.toLowerCase().includes(term)
+          );
+      }
+      return tools;
+  };
 
   return (
-    <div className="max-w-5xl mx-auto py-12">
-      <div className="mb-12">
-        <h2 className="text-3xl font-bold mb-3 text-gray-900 dark:text-white">Welcome to SQL Dev Toolkit</h2>
-        <p className="text-gray-600 dark:text-gray-300 text-lg">
-          專為開發者設計的 SQL 輔助工具集，提升您的開發效率。
+    <div className="py-8 pb-20">
+      {/* Hero / Search Section */}
+      <div className="mb-10 text-center max-w-2xl mx-auto">
+        <h1 className="text-4xl font-extrabold mb-4 text-gray-900 dark:text-white tracking-tight">
+          SQL Dev Toolkit
+        </h1>
+        <p className="text-gray-500 dark:text-[#9AA0A6] text-lg mb-8">
+          提升開發效率的現代化工具箱
         </p>
+        
+        <div className="relative group">
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <span className="text-gray-400 text-lg">🔍</span>
+            </div>
+            <input 
+                type="text" 
+                className="w-full pl-12 pr-4 py-4 rounded-2xl bg-white dark:bg-[#1e1e20] border-2 border-transparent focus:border-blue-500 dark:focus:border-[#A8C7FA] shadow-sm group-hover:shadow-md transition-all text-gray-800 dark:text-white placeholder-gray-400 outline-none text-base"
+                placeholder="搜尋工具 (例如: Json, Java, 比對...)"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                autoFocus
+            />
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {tools.map((tool) => (
-          <div 
-            key={tool.path}
-            onClick={() => navigate(tool.path)}
-            className="rounded-xl p-6 cursor-pointer group transition-all relative overflow-hidden bg-white dark:bg-[#161618] border border-gray-200 dark:border-[#3c4043] hover:border-blue-400 dark:hover:border-[#A8C7FA] shadow-sm hover:shadow-md"
-          >
-            <div className="flex items-start gap-4">
-               <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-[#004A77] flex items-center justify-center text-2xl group-hover:scale-110 transition-transform duration-300">
-                 {tool.icon}
-               </div>
-               <div className="flex-1">
-                 <h3 className="text-xl font-bold mb-2 text-gray-800 dark:text-white group-hover:text-blue-600 dark:group-hover:text-[#A8C7FA] transition-colors">
-                    {tool.title}
-                 </h3>
-                 <p className="text-gray-600 dark:text-gray-100 text-sm leading-relaxed">
-                   {tool.desc}
-                 </p>
-               </div>
+      {/* Categories Grid */}
+      <div className="space-y-12">
+        {filteredCategories.length === 0 ? (
+            <div className="text-center text-gray-500 py-12">
+                沒有找到符合「{searchTerm}」的工具。
             </div>
-            
-            {/* Hover Indicator */}
-            <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity transform translate-x-2 group-hover:translate-x-0">
-               <span className="text-blue-600 dark:text-[#A8C7FA]">→</span>
-            </div>
-          </div>
-        ))}
+        ) : (
+            filteredCategories.map((category) => {
+                const categoryTools = getToolsByCategory(category.id);
+                if (categoryTools.length === 0) return null;
+
+                return (
+                    <div key={category.id} className="animate-fade-in-up">
+                        <div className="flex items-center gap-3 mb-5 px-1">
+                            <h2 className="text-xl font-bold text-gray-800 dark:text-[#E8EAED] tracking-wide">
+                                {category.label}
+                            </h2>
+                            <div className="h-px bg-gray-200 dark:bg-[#3c4043] flex-1"></div>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                            {categoryTools.map((tool) => (
+                                <div 
+                                    key={tool.path}
+                                    onClick={() => navigate(tool.path)}
+                                    className="relative group bg-white dark:bg-[#18181a] p-5 rounded-xl border border-gray-200 dark:border-[#3c4043] hover:border-blue-400 dark:hover:border-[#A8C7FA] hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer flex flex-col h-full"
+                                >
+                                    <div className="flex items-start justify-between mb-3">
+                                        <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-[#202124] flex items-center justify-center text-xl group-hover:scale-110 transition-transform duration-300">
+                                            {tool.icon}
+                                        </div>
+                                        <span className="opacity-0 group-hover:opacity-100 text-blue-600 dark:text-[#A8C7FA] transition-opacity">
+                                            ↗
+                                        </span>
+                                    </div>
+                                    <h3 className="text-lg font-bold text-gray-800 dark:text-[#E3E3E3] mb-2 group-hover:text-blue-600 dark:group-hover:text-[#A8C7FA] transition-colors">
+                                        {tool.label}
+                                    </h3>
+                                    <p className="text-sm text-gray-500 dark:text-[#9AA0A6] leading-relaxed">
+                                        {tool.desc}
+                                    </p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                );
+            })
+        )}
       </div>
     </div>
   );

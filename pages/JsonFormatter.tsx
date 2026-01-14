@@ -47,14 +47,16 @@ const JsonFormatter: React.FC = () => {
     const parseList: () => any[] = () => {
       consume(); // '['
       const arr = [];
-      consumeWhitespace();
       
-      if (peek() === ']') {
-        consume();
-        return arr;
-      }
-
       while (pos < str.length) {
+        consumeWhitespace();
+        
+        // Handle empty list or trailing comma case immediately
+        if (peek() === ']') {
+            consume();
+            return arr;
+        }
+
         const val = parseValue();
         arr.push(val);
         
@@ -62,12 +64,7 @@ const JsonFormatter: React.FC = () => {
         
         if (peek() === ',') {
             consume();
-            consumeWhitespace();
-            if (peek() === ']') {
-                consume();
-                return arr;
-            }
-            continue;
+            continue; // Continue to next item (loop will check for ']' again)
         }
 
         if (peek() === ']') {
@@ -75,12 +72,16 @@ const JsonFormatter: React.FC = () => {
             return arr;
         }
 
-        // Error recovery
-        const nextChar = peek();
-        if (nextChar === '{' || nextChar === '[') {
-            continue;
+        // Error recovery: skipping unknown chars to avoid infinite loop
+        // We only skip if we didn't find a separator or closer
+        if (pos < str.length) {
+             const nextChar = peek();
+             // If we see a start of new item, implicit comma
+             if (nextChar === '{' || nextChar === '[') {
+                 continue;
+             }
+             pos++; 
         }
-        if (pos < str.length) pos++; 
       }
       return arr;
     };
@@ -88,14 +89,14 @@ const JsonFormatter: React.FC = () => {
     const parseMap: () => any = () => {
       consume(); // '{'
       const obj: any = {};
-      consumeWhitespace();
       
-      if (peek() === '}') {
-        consume();
-        return obj;
-      }
-
       while (pos < str.length) {
+        consumeWhitespace();
+        if (peek() === '}') {
+            consume();
+            return obj;
+        }
+
         const key = parseKey();
         consumeWhitespace();
         
@@ -109,11 +110,6 @@ const JsonFormatter: React.FC = () => {
         consumeWhitespace();
         if (peek() === ',') {
             consume();
-            consumeWhitespace();
-            if (peek() === '}') {
-                consume();
-                return obj;
-            }
             continue;
         }
 
@@ -122,11 +118,15 @@ const JsonFormatter: React.FC = () => {
             return obj;
         }
         
-        if (/[a-zA-Z0-9_]/.test(peek() || '')) {
-            continue;
+        // Error recovery
+        if (pos < str.length) {
+             const nextChar = peek();
+             // Check if it looks like a key start
+             if (/[a-zA-Z0-9_]/.test(nextChar || '')) {
+                 continue;
+             }
+             pos++;
         }
-        
-        if (pos < str.length) pos++;
       }
       return obj;
     };
@@ -136,22 +136,52 @@ const JsonFormatter: React.FC = () => {
       let start = pos;
       while (pos < str.length) {
           const c = str[pos];
-          if (c === '=' || c === ',' || c === '}' || /\s/.test(c)) {
+          // Stop at separators
+          if (c === '=' || c === ',' || c === '}') {
               break;
           }
           pos++;
       }
-      return str.substring(start, pos);
+      return str.substring(start, pos).trim();
     };
 
     const parseLiteral = () => {
       consumeWhitespace();
       let start = pos;
-      
+      let depth = 0; // Track nesting of {}, [], ()
+      let inQuote = false;
+      let quoteChar = '';
+
       while (pos < str.length) {
           const c = str[pos];
-          if (c === ',' || c === '}' || c === ']') {
-              break;
+
+          if (inQuote) {
+              // If inside a quote, ignore everything except the matching closing quote
+              // Simple escape handling: skip if preceded by backslash (not perfect but sufficient for simple cases)
+              if (c === quoteChar && str[pos - 1] !== '\\') {
+                  inQuote = false;
+              }
+          } else {
+              // Not in quote
+              if (c === '"' || c === "'") {
+                  inQuote = true;
+                  quoteChar = c;
+              } else if (c === '{' || c === '[' || c === '(') {
+                  depth++;
+              } else if (c === '}' || c === ']' || c === ')') {
+                  if (depth > 0) {
+                      depth--;
+                  } else {
+                      // depth is 0, this closer belongs to the parent container
+                      // e.g. parsing a value inside { key=val } -> '}' ends the val AND the map
+                      break;
+                  }
+              } else if (c === ',') {
+                  // Only break on comma if we are at top level (not nested)
+                  if (depth === 0) {
+                      break;
+                  }
+              }
           }
           pos++;
       }
@@ -162,12 +192,22 @@ const JsonFormatter: React.FC = () => {
       if (val === 'true') return true;
       if (val === 'false') return false;
 
-      if (val !== '' && !isNaN(Number(val))) {
+      // Try to parse as number
+      if (val !== '' && !isNaN(Number(val)) && !inQuote && (val.match(/^0\d+/) === null)) { 
+          // Regex check prevents "0113" (octal-like string) being parsed as number 113 if user wants string
+          // But strict isNaN usually handles this. Adding strict check for scientific notation or standard numbers
           const isScientific = /e/i.test(val);
           const isLeadingZero = val.length > 1 && val.startsWith('0') && !val.includes('.');
           
           if (!isLeadingZero || isScientific) {
               return Number(val);
+          }
+      }
+
+      // If it looks like a quoted string ('...' or "..."), strip quotes
+      if ((val.startsWith("'") && val.endsWith("'")) || (val.startsWith('"') && val.endsWith('"'))) {
+          if (val.length >= 2) {
+              return val.substring(1, val.length - 1);
           }
       }
 
@@ -233,21 +273,29 @@ const JsonFormatter: React.FC = () => {
 
       // Determine Table Structure
       if (Array.isArray(parsedData)) {
-          if (parsedData.length > 0 && typeof parsedData[0] === 'object' && parsedData[0] !== null) {
-              // Case: Array of Objects
-              isArrayOfObjects = true;
-              const keys = new Set<string>();
-              parsedData.forEach(item => {
-                  if (item && typeof item === 'object') {
-                      Object.keys(item).forEach(k => keys.add(k));
-                  }
-              });
-              headers = Array.from(keys);
-              rows = parsedData;
+          if (parsedData.length > 0) {
+              // Check if it looks like an array of objects
+              // We check the first non-null item to guess type
+              const firstItem = parsedData.find(item => item !== null && item !== undefined);
+              if (typeof firstItem === 'object') {
+                  isArrayOfObjects = true;
+                  const keys = new Set<string>();
+                  parsedData.forEach(item => {
+                      if (item && typeof item === 'object') {
+                          Object.keys(item).forEach(k => keys.add(k));
+                      }
+                  });
+                  headers = Array.from(keys);
+                  rows = parsedData;
+              } else {
+                   // Primitives
+                   headers = ['Index', 'Value'];
+                   rows = parsedData.map((val, idx) => ({ Index: idx, Value: val }));
+              }
           } else {
-              // Case: Array of Primitives (or mixed/empty)
-              headers = ['Index', 'Value'];
-              rows = parsedData.map((val, idx) => ({ Index: idx, Value: val }));
+              // Empty array
+              headers = ['Value'];
+              rows = [];
           }
       } else if (typeof parsedData === 'object' && parsedData !== null) {
           // Case: Single Object
@@ -258,7 +306,7 @@ const JsonFormatter: React.FC = () => {
           return <div className="p-4 text-gray-500 text-center">此資料類型 ({typeof parsedData}) 不支援表格檢視。</div>;
       }
 
-      if (rows.length === 0) return <div className="p-8 text-gray-500 text-center">無資料可顯示。</div>;
+      if (rows.length === 0) return <div className="p-8 text-gray-500 text-center">無資料可顯示 (Empty Array)。</div>;
 
       return (
           <div className="w-full h-full overflow-auto bg-white dark:bg-[#0e0e0f]">
@@ -379,6 +427,9 @@ const JsonFormatter: React.FC = () => {
          <div className="flex justify-between items-center mb-2 px-1">
             <div className="flex items-center gap-3">
                 <h3 className="text-sm font-medium text-gray-700 dark:text-[#E8EAED]">解析結果</h3>
+                {parsedData && Array.isArray(parsedData) && (
+                    <span className="text-gray-400 text-xs">({parsedData.length} items)</span>
+                )}
                 {detectedMode && (
                     <span className="bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-[10px] px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-800">
                         已偵測: {detectedMode === 'java' ? 'Java Map' : 'JSON'}

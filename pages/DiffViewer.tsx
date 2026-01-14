@@ -25,6 +25,8 @@ interface AlignedRow {
   }
 }
 
+type ViewMode = 'split' | 'inline';
+
 // --- Algorithms ---
 
 // 1. Line-level Diff (LCS)
@@ -210,6 +212,7 @@ const DiffViewer: React.FC = () => {
   const [alignedRows, setAlignedRows] = useState<AlignedRow[] | null>(null);
   const [stats, setStats] = useState({ add: 0, del: 0 });
   const [showDiffOnly, setShowDiffOnly] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('split');
 
   const handleCompare = () => {
     if (!leftText && !rightText) return;
@@ -254,22 +257,7 @@ const DiffViewer: React.FC = () => {
     );
   };
 
-  const renderSideBySide = () => {
-    if (!alignedRows) return null;
-
-    // Filter rows if "Show Diff Only" is checked
-    const rowsToRender = showDiffOnly 
-        ? alignedRows.filter(r => r.type !== 'eq') 
-        : alignedRows;
-
-    if (rowsToRender.length === 0 && alignedRows.length > 0) {
-         return (
-            <div className="p-8 text-center text-gray-500 dark:text-gray-400 bg-white dark:bg-[#1e1e1e] border border-gray-200 dark:border-[#3c4043] rounded-md">
-                文件內容完全相同，沒有差異。
-            </div>
-         )
-    }
-
+  const renderSideBySide = (rowsToRender: AlignedRow[]) => {
     return (
       <div className="w-full h-full min-h-[300px] flex flex-col font-mono text-xs md:text-sm border border-gray-300 dark:border-[#3c4043] rounded-md bg-white dark:bg-[#1e1e1e] overflow-hidden">
          <div className="flex-1 overflow-auto">
@@ -342,6 +330,112 @@ const DiffViewer: React.FC = () => {
     );
   };
 
+  const renderInline = (rowsToRender: AlignedRow[]) => {
+    return (
+        <div className="w-full h-full min-h-[300px] flex flex-col font-mono text-xs md:text-sm border border-gray-300 dark:border-[#3c4043] rounded-md bg-white dark:bg-[#1e1e1e] overflow-hidden">
+           <div className="flex-1 overflow-auto">
+              <table className="w-full border-collapse">
+                  <colgroup>
+                      <col className="w-[40px] bg-gray-50 dark:bg-[#2d2e31] border-r border-gray-200 dark:border-[#3c4043]" />
+                      <col className="w-[40px] bg-gray-50 dark:bg-[#2d2e31] border-r border-gray-200 dark:border-[#3c4043]" />
+                      <col />
+                  </colgroup>
+                  <tbody>
+                      {rowsToRender.map((row, idx) => {
+                          const { type, left, right, charDiff } = row;
+                          
+                          // Shared Classes
+                          const numCellClass = "text-right text-gray-400 select-none p-1 pr-2 align-top text-[10px] pt-1.5";
+                          const contentCellClass = "whitespace-pre-wrap break-all p-1 px-2 align-top";
+                          const rowBaseClass = "border-b border-gray-100 dark:border-[#3c4043]/30";
+  
+                          // Render logic based on type
+                          if (type === 'eq') {
+                              return (
+                                  <tr key={idx} className={`${rowBaseClass} hover:bg-gray-50 dark:hover:bg-[#2a2b2e]`}>
+                                      <td className={numCellClass}>{left?.lineNumber}</td>
+                                      <td className={numCellClass}>{right?.lineNumber}</td>
+                                      <td className={`${contentCellClass} text-gray-700 dark:text-[#E8EAED]`}>
+                                          {left?.text}
+                                      </td>
+                                  </tr>
+                              );
+                          }
+                          
+                          if (type === 'del') {
+                              return (
+                                  <tr key={idx} className={`${rowBaseClass} bg-red-50 dark:bg-[#3c1618]`}>
+                                      <td className={numCellClass}>{left?.lineNumber}</td>
+                                      <td className={numCellClass}></td>
+                                      <td className={`${contentCellClass} text-red-900 dark:text-[#E8EAED]`}>
+                                          {left?.text}
+                                      </td>
+                                  </tr>
+                              );
+                          }
+
+                          if (type === 'ins') {
+                              return (
+                                  <tr key={idx} className={`${rowBaseClass} bg-green-50 dark:bg-[#0c2b15]`}>
+                                      <td className={numCellClass}></td>
+                                      <td className={numCellClass}>{right?.lineNumber}</td>
+                                      <td className={`${contentCellClass} text-green-900 dark:text-[#E8EAED]`}>
+                                          {right?.text}
+                                      </td>
+                                  </tr>
+                              );
+                          }
+
+                          if (type === 'mod') {
+                              return (
+                                  <React.Fragment key={idx}>
+                                      {/* Old Version (Red) */}
+                                      <tr className={`${rowBaseClass} bg-red-50 dark:bg-[#3c1618]`}>
+                                          <td className={numCellClass}>{left?.lineNumber}</td>
+                                          <td className={numCellClass}></td>
+                                          <td className={`${contentCellClass} text-gray-800 dark:text-[#E8EAED]`}>
+                                              {charDiff ? renderHighlightedText(charDiff.left) : left?.text}
+                                          </td>
+                                      </tr>
+                                      {/* New Version (Green) */}
+                                      <tr className={`${rowBaseClass} bg-green-50 dark:bg-[#0c2b15]`}>
+                                          <td className={numCellClass}></td>
+                                          <td className={numCellClass}>{right?.lineNumber}</td>
+                                          <td className={`${contentCellClass} text-gray-800 dark:text-[#E8EAED]`}>
+                                              {charDiff ? renderHighlightedText(charDiff.right) : right?.text}
+                                          </td>
+                                      </tr>
+                                  </React.Fragment>
+                              );
+                          }
+                          return null;
+                      })}
+                  </tbody>
+              </table>
+           </div>
+        </div>
+      );
+  };
+
+  const renderResults = () => {
+    if (!alignedRows) return null;
+
+    // Filter rows if "Show Diff Only" is checked
+    const rowsToRender = showDiffOnly 
+        ? alignedRows.filter(r => r.type !== 'eq') 
+        : alignedRows;
+
+    if (rowsToRender.length === 0 && alignedRows.length > 0) {
+         return (
+            <div className="p-8 text-center text-gray-500 dark:text-gray-400 bg-white dark:bg-[#1e1e1e] border border-gray-200 dark:border-[#3c4043] rounded-md">
+                文件內容完全相同，沒有差異。
+            </div>
+         )
+    }
+    
+    return viewMode === 'split' ? renderSideBySide(rowsToRender) : renderInline(rowsToRender);
+  };
+
   return (
     <div className="flex flex-col h-full gap-6">
       {/* Header */}
@@ -387,7 +481,7 @@ const DiffViewer: React.FC = () => {
       </div>
 
       {/* Controls */}
-      <div className="flex gap-4 justify-between items-center shrink-0">
+      <div className="flex flex-col md:flex-row gap-4 justify-between items-center shrink-0">
          <div className="flex gap-3">
             <Button onClick={handleCompare} variant="primary">
                 🔍 開始比對
@@ -398,15 +492,40 @@ const DiffViewer: React.FC = () => {
         </div>
         
         {alignedRows && (
-            <label className="flex items-center gap-2 cursor-pointer select-none text-sm text-gray-700 dark:text-[#E8EAED] font-medium bg-white dark:bg-[#18181a] px-3 py-2 rounded-lg border border-gray-200 dark:border-[#3c4043] shadow-sm hover:bg-gray-50 dark:hover:bg-[#202124] transition-colors">
-                <input 
-                    type="checkbox" 
-                    checked={showDiffOnly} 
-                    onChange={(e) => setShowDiffOnly(e.target.checked)}
-                    className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                />
-                👀 僅顯示差異行
-            </label>
+            <div className="flex items-center gap-3">
+                <div className="flex bg-gray-100 dark:bg-[#202124] p-1 rounded-lg border border-gray-200 dark:border-[#3c4043]">
+                    <button
+                        onClick={() => setViewMode('split')}
+                        className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                            viewMode === 'split' 
+                            ? 'bg-white dark:bg-[#004A77] text-blue-700 dark:text-[#C2E7FF] shadow-sm' 
+                            : 'text-gray-500 dark:text-[#9AA0A6] hover:text-gray-800 dark:hover:text-[#E8EAED]'
+                        }`}
+                    >
+                        ◫ 左右對照
+                    </button>
+                    <button
+                        onClick={() => setViewMode('inline')}
+                        className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                            viewMode === 'inline' 
+                            ? 'bg-white dark:bg-[#004A77] text-blue-700 dark:text-[#C2E7FF] shadow-sm' 
+                            : 'text-gray-500 dark:text-[#9AA0A6] hover:text-gray-800 dark:hover:text-[#E8EAED]'
+                        }`}
+                    >
+                        ☰ 行內比對 (Redmine)
+                    </button>
+                </div>
+                
+                <label className="flex items-center gap-2 cursor-pointer select-none text-sm text-gray-700 dark:text-[#E8EAED] font-medium bg-white dark:bg-[#18181a] px-3 py-2 rounded-lg border border-gray-200 dark:border-[#3c4043] shadow-sm hover:bg-gray-50 dark:hover:bg-[#202124] transition-colors">
+                    <input 
+                        type="checkbox" 
+                        checked={showDiffOnly} 
+                        onChange={(e) => setShowDiffOnly(e.target.checked)}
+                        className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                    />
+                    👀 僅顯示差異行
+                </label>
+            </div>
         )}
       </div>
 
@@ -414,7 +533,7 @@ const DiffViewer: React.FC = () => {
       {alignedRows && (
         <div className="flex-1 flex flex-col gap-2 min-h-0 overflow-hidden">
             <h3 className="text-sm font-medium text-gray-700 dark:text-[#E8EAED] shrink-0">📊 比對結果</h3>
-            {renderSideBySide()}
+            {renderResults()}
         </div>
       )}
     </div>
