@@ -55,8 +55,8 @@ export const Button: React.FC<ButtonProps> = ({
       // Primary: Soft Blue (Light) | Solid Blue (Dark)
       primary: "text-white bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-lg hover:shadow-xl dark:bg-none dark:bg-blue-600 dark:hover:bg-blue-700 dark:shadow-none border-0",
       
-      // Secondary: Glassy (Light) | Solid Dark (Dark)
-      secondary: "text-gray-700 bg-white/70 hover:bg-white border border-white/50 shadow-sm dark:text-gray-300 dark:bg-[#202124] dark:hover:bg-[#2a2b2e] dark:border-[#3c4043] dark:shadow-none backdrop-blur-sm dark:backdrop-blur-none",
+      // Secondary: Solid White (Light) | Solid Dark (Dark)
+      secondary: "text-gray-700 bg-white hover:bg-gray-50 border border-gray-200 shadow-sm dark:text-gray-300 dark:bg-[#202124] dark:hover:bg-[#2a2b2e] dark:border-[#3c4043] dark:shadow-none",
       
       // Danger: Soft Red (Light) | Solid Red (Dark)
       danger: "text-white bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 shadow-md dark:bg-none dark:bg-red-600 dark:hover:bg-red-700 dark:shadow-none",
@@ -106,8 +106,8 @@ export const TextArea: React.FC<TextAreaProps> = ({ label, monospace = true, cla
       
       <div className={`
         flex-1 relative group overflow-hidden rounded-2xl dark:rounded-xl transition-all duration-300
-        bg-white/50 backdrop-blur-md border border-gray-200
-        dark:bg-[#09090b] dark:backdrop-blur-none dark:border-[#3c4043]
+        bg-white border border-gray-200
+        dark:bg-[#09090b] dark:border-[#3c4043]
         focus-within:border-blue-400 dark:focus-within:border-blue-500
         focus-within:ring-4 focus-within:ring-blue-100 dark:focus-within:ring-0
         shadow-sm dark:shadow-none
@@ -117,8 +117,8 @@ export const TextArea: React.FC<TextAreaProps> = ({ label, monospace = true, cla
         {/* Line Numbers Gutter */}
         <div 
           ref={lineNumbersRef}
-          className="absolute left-0 top-0 bottom-0 w-10 bg-gray-50/50 border-r border-gray-100 text-right pr-2 pt-3 text-gray-400 text-sm font-mono overflow-hidden select-none backdrop-blur-sm
-          dark:bg-[#121212] dark:border-[#3c4043] dark:text-gray-600 dark:backdrop-blur-none"
+          className="absolute left-0 top-0 bottom-0 w-10 bg-gray-50 border-r border-gray-100 text-right pr-2 pt-3 text-gray-400 text-sm font-mono overflow-hidden select-none
+          dark:bg-[#121212] dark:border-[#3c4043] dark:text-gray-600"
           aria-hidden="true"
         >
           <pre className="whitespace-pre-wrap font-mono text-sm leading-normal">{lineNumbers}</pre>
@@ -154,8 +154,8 @@ export const Input: React.FC<InputProps> = ({ label, className = '', ...props })
       <input
         className={`
             w-full px-4 py-2.5 rounded-xl dark:rounded-xl transition-all duration-300
-            bg-white/50 backdrop-blur-md border border-gray-200
-            dark:bg-[#09090b] dark:backdrop-blur-none dark:border-[#3c4043]
+            bg-white border border-gray-200
+            dark:bg-[#09090b] dark:border-[#3c4043]
             text-gray-800 dark:text-gray-200 text-sm font-mono
             focus:outline-none focus:border-blue-400 dark:focus:border-blue-500
             focus:ring-4 focus:ring-blue-100 dark:focus:ring-0
@@ -222,8 +222,8 @@ export const OutputBox: React.FC<OutputBoxProps> = ({ title, content, placeholde
       
       <div className={`
         flex-1 w-full min-h-[120px] max-h-[600px] relative rounded-2xl dark:rounded-xl overflow-hidden transition-all duration-300
-        bg-gray-50/50 backdrop-blur-md border border-gray-200
-        dark:bg-[#09090b] dark:backdrop-blur-none dark:border-[#3c4043]
+        bg-white border border-gray-200
+        dark:bg-[#09090b] dark:border-[#3c4043]
         group-hover:border-blue-300 dark:group-hover:border-gray-500
         focus-within:border-blue-400 dark:focus-within:border-blue-500
         focus-within:ring-4 focus-within:ring-blue-100 dark:focus-within:ring-0

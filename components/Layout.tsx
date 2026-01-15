@@ -37,25 +37,13 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const currentCategory = currentTool ? getCategoryByToolPath(location.pathname) : null;
 
   return (
-    <div className="min-h-screen relative overflow-hidden transition-colors duration-300 font-sans text-gray-800 dark:text-gray-100 bg-[#F3F4F6] dark:bg-[#0e0e0f]">
+    <div className="min-h-screen relative overflow-hidden transition-colors duration-300 font-sans text-gray-800 dark:text-gray-100 bg-[#F8F9FA] dark:bg-[#0e0e0f]">
       
-      {/* --- Background Effects Layer (Light Mode Only) --- */}
-      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-        {/* LIGHT MODE: Floating Blobs (Pastel) */}
-        <div className={`absolute top-0 left-0 w-full h-full transition-opacity duration-700 ${isDark ? 'opacity-0' : 'opacity-100'}`}>
-            <div className="absolute top-0 -left-4 w-72 h-72 bg-purple-300 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob"></div>
-            <div className="absolute top-0 -right-4 w-72 h-72 bg-yellow-300 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob animation-delay-2000"></div>
-            <div className="absolute -bottom-8 left-20 w-72 h-72 bg-pink-300 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob animation-delay-4000"></div>
-        </div>
-        
-        {/* DARK MODE: Clean Solid Background (No Effects) - Managed by parent div bg color */}
-      </div>
-
       {/* --- Header --- */}
-      {/* Light: Glass | Dark: Solid #0e0e0f with border */}
+      {/* Light: Solid white | Dark: Solid #0e0e0f with border */}
       <header className="fixed top-0 left-0 right-0 h-16 z-[60] px-4 flex items-center justify-between
-        bg-white/70 backdrop-blur-xl border-b border-white/50 
-        dark:bg-[#0e0e0f] dark:border-[#2d2d30] dark:backdrop-blur-none
+        bg-white border-b border-gray-200 
+        dark:bg-[#0e0e0f] dark:border-[#2d2d30]
         transition-all duration-300 shadow-sm dark:shadow-none">
           
           <div className="flex items-center gap-4">
@@ -115,7 +103,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               onClick={toggleTheme}
               className={`
                 w-9 h-9 rounded-full flex items-center justify-center transition-all duration-300
-                bg-gray-100/50 hover:bg-gray-200/50 text-gray-600
+                bg-gray-100 hover:bg-gray-200 text-gray-600
                 dark:bg-[#18181a] dark:hover:bg-[#2d2d30] dark:text-yellow-400 dark:border dark:border-[#3c4043]
               `}
               title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
@@ -134,12 +122,12 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       )}
 
       {/* --- Sidebar --- */}
-      {/* Light: Glass | Dark: Solid #0e0e0f with border */}
+      {/* Light: Solid white | Dark: Solid #0e0e0f with border */}
       <aside 
         className={`
           fixed top-16 bottom-0 left-0 z-50
-          bg-white/40 backdrop-blur-xl border-r border-white/60
-          dark:bg-[#0e0e0f] dark:border-[#2d2d30] dark:backdrop-blur-none
+          bg-white border-r border-gray-200
+          dark:bg-[#0e0e0f] dark:border-[#2d2d30]
           transition-all duration-300 ease-in-out flex flex-col group
           ${isSidebarOpen ? 'w-64' : 'w-20'}
           ${isMobileMenuOpen ? 'translate-x-0 w-64 shadow-2xl' : '-translate-x-full md:translate-x-0'}
@@ -192,8 +180,8 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                          `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
                          ${!isSidebarOpen && !isMobileMenuOpen ? 'justify-center' : ''}
                          ${isActive 
-                           ? 'bg-white/80 text-blue-600 shadow-sm ring-1 ring-black/5 dark:bg-[#202124] dark:text-blue-400 dark:ring-0' 
-                           : 'text-gray-600 hover:bg-white/50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-[#18181a] dark:hover:text-gray-200'
+                           ? 'bg-blue-50 text-blue-600 shadow-sm dark:bg-[#202124] dark:text-blue-400' 
+                           : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-[#18181a] dark:hover:text-gray-200'
                          }`
                        }
                      >

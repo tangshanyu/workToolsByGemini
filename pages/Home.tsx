@@ -36,9 +36,9 @@ const Home: React.FC = () => {
 
   const cardClass = `
     relative group p-6 rounded-2xl dark:rounded-xl cursor-pointer flex flex-col h-full transition-all duration-300
-    bg-white/40 backdrop-blur-xl border border-white/50 shadow-xl
-    hover:border-blue-400/50 hover:shadow-2xl hover:-translate-y-1
-    dark:bg-[#18181a] dark:backdrop-blur-none dark:border-[#2d2d30] dark:shadow-none dark:hover:border-gray-500
+    bg-white border border-gray-200 shadow-sm
+    hover:border-blue-400/50 hover:shadow-lg hover:-translate-y-1
+    dark:bg-[#18181a] dark:border-[#2d2d30] dark:shadow-none dark:hover:border-gray-500
   `;
 
   return (
@@ -59,8 +59,8 @@ const Home: React.FC = () => {
             <input 
                 type="text" 
                 className="w-full pl-14 pr-6 py-4 rounded-full 
-                bg-white/60 backdrop-blur-xl border border-gray-200 
-                dark:bg-[#18181a] dark:backdrop-blur-none dark:border-[#3c4043]
+                bg-white border border-gray-200 
+                dark:bg-[#18181a] dark:border-[#3c4043]
                 focus:border-blue-400 dark:focus:border-blue-500
                 focus:ring-4 focus:ring-blue-100 dark:focus:ring-0
                 shadow-lg dark:shadow-none
@@ -77,7 +77,7 @@ const Home: React.FC = () => {
       {/* Categories Grid */}
       <div className="space-y-16">
         {filteredCategories.length === 0 ? (
-            <div className="text-center text-gray-500 dark:text-gray-400 py-12 rounded-3xl bg-white/40 dark:bg-[#18181a] border border-white/50 dark:border-[#2d2d30]">
+            <div className="text-center text-gray-500 dark:text-gray-400 py-12 rounded-3xl bg-white dark:bg-[#18181a] border border-gray-200 dark:border-[#2d2d30]">
                 沒有找到符合「{searchTerm}」的工具。
             </div>
         ) : (
@@ -102,7 +102,7 @@ const Home: React.FC = () => {
                                     className={cardClass}
                                 >
                                     <div className="flex items-start justify-between mb-4">
-                                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-[#202024] dark:to-[#1a1a20] border border-white/50 dark:border-[#3c4043] flex items-center justify-center text-2xl shadow-sm dark:shadow-none group-hover:scale-110 transition-transform duration-300">
+                                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-[#202024] dark:to-[#1a1a20] border border-gray-200 dark:border-[#3c4043] flex items-center justify-center text-2xl shadow-sm dark:shadow-none group-hover:scale-110 transition-transform duration-300">
                                             {tool.icon}
                                         </div>
                                         <span className="opacity-0 group-hover:opacity-100 text-blue-500 dark:text-gray-400 transition-opacity transform translate-x-2 group-hover:translate-x-0">
