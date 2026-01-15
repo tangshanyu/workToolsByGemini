@@ -1,8 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { TextArea, Button, OutputBox, PageHeader } from '../components/UI';
 
-type ParseMode = 'auto' | 'json' | 'java';
+type ParseMode = 'auto' | 'json' | 'java' | 'csv';
 type ViewMode = 'text' | 'table';
+
+interface SortConfig {
+  key: string;
+  direction: 'asc' | 'desc';
+}
 
 const JsonFormatter: React.FC = () => {
   const [input, setInput] = useState('');
@@ -12,6 +17,10 @@ const JsonFormatter: React.FC = () => {
   const [mode, setMode] = useState<ParseMode>('auto');
   const [detectedMode, setDetectedMode] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('text');
+
+  // Table specific states
+  const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
+  const [tableFilter, setTableFilter] = useState('');
 
   // --- Robust Java Map Parser ---
   const parseJavaMap = (str: string) => {
@@ -217,6 +226,90 @@ const JsonFormatter: React.FC = () => {
     return parseValue();
   };
 
+  // --- CSV Parser ---
+  const parseCSV = (text: string): any[] => {
+      const rows: string[][] = [];
+      let currentRow: string[] = [];
+      let currentVal = '';
+      let insideQuote = false;
+      
+      // Normalize line breaks
+      const cleanText = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+      
+      for (let i = 0; i < cleanText.length; i++) {
+          const char = cleanText[i];
+          const nextChar = cleanText[i + 1];
+
+          if (char === '"') {
+              if (insideQuote && nextChar === '"') {
+                  // Escaped quote ("")
+                  currentVal += '"';
+                  i++; // skip next quote
+              } else {
+                  // Toggle quote state
+                  insideQuote = !insideQuote;
+              }
+          } else if (char === ',' && !insideQuote) {
+              // End of field
+              currentRow.push(currentVal);
+              currentVal = '';
+          } else if (char === '\n' && !insideQuote) {
+              // End of row
+              currentRow.push(currentVal);
+              rows.push(currentRow);
+              currentRow = [];
+              currentVal = '';
+          } else {
+              currentVal += char;
+          }
+      }
+      
+      // Push last field/row if exists
+      if (currentVal || currentRow.length > 0) {
+          currentRow.push(currentVal);
+          rows.push(currentRow);
+      }
+
+      // Convert to Objects if headers exist
+      if (rows.length < 2) return rows; // Return array of arrays if simple list
+
+      const headers = rows[0].map(h => h.trim());
+      const data = [];
+      
+      for (let i = 1; i < rows.length; i++) {
+          const row = rows[i];
+          // Skip empty trailing rows
+          if (row.length === 1 && row[0] === '') continue;
+          
+          const obj: any = {};
+          let hasData = false;
+          
+          headers.forEach((header, index) => {
+              const val = row[index];
+              if (val !== undefined) {
+                 // Try to convert numbers/booleans if it looks like one, else string
+                 const trimmed = val.trim();
+                 if (!isNaN(Number(trimmed)) && trimmed !== '') {
+                    obj[header] = Number(trimmed);
+                 } else if (trimmed.toLowerCase() === 'true') {
+                    obj[header] = true;
+                 } else if (trimmed.toLowerCase() === 'false') {
+                    obj[header] = false;
+                 } else {
+                    obj[header] = val; // keep spaces for strings if meaningful
+                 }
+                 hasData = true;
+              } else {
+                 obj[header] = null;
+              }
+          });
+          
+          if (hasData) data.push(obj);
+      }
+      
+      return data;
+  };
+
   const processFormat = () => {
     if (!input.trim()) {
       setOutput('');
@@ -229,12 +322,19 @@ const JsonFormatter: React.FC = () => {
     try {
       let parsed;
       let usedMode = mode;
+      const trimmed = input.trim();
 
       if (mode === 'auto') {
-          const trimmed = input.trim();
-          // Java maps often use = for assignment and unquoted keys, or start with simple {key=
-          const isJava = trimmed.includes('=') && !trimmed.includes('":');
-          usedMode = isJava ? 'java' : 'json';
+          if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+             usedMode = 'json';
+          } else if (trimmed.includes('=') && !trimmed.includes('":') && trimmed.startsWith('{')) {
+             usedMode = 'java';
+          } else if (trimmed.includes(',') && !trimmed.startsWith('{') && !trimmed.startsWith('[')) {
+             // Heuristic for CSV: usually has commas and newlines, or at least multiple commas
+             usedMode = 'csv';
+          } else {
+             usedMode = 'json'; // Fallback
+          }
           setDetectedMode(usedMode);
       } else {
           setDetectedMode(null);
@@ -242,13 +342,21 @@ const JsonFormatter: React.FC = () => {
 
       if (usedMode === 'java') {
          parsed = parseJavaMap(input);
+      } else if (usedMode === 'csv') {
+         parsed = parseCSV(input);
       } else {
+         // Default JSON
          parsed = JSON.parse(input);
       }
 
       setParsedData(parsed);
       setOutput(JSON.stringify(parsed, null, 2));
       setError(null);
+      
+      // Reset table states
+      setSortConfig(null);
+      setTableFilter('');
+
     } catch (e: any) {
       setError("解析失敗: " + e.message + "\n\n請檢查所選格式是否正確，或資料是否包含特殊字元。");
       setParsedData(null);
@@ -261,6 +369,16 @@ const JsonFormatter: React.FC = () => {
     setParsedData(null);
     setError(null);
     setDetectedMode(null);
+    setSortConfig(null);
+    setTableFilter('');
+  };
+
+  const requestSort = (key: string) => {
+    let direction: 'asc' | 'desc' = 'asc';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
   };
 
   // --- Render Table ---
@@ -277,7 +395,9 @@ const JsonFormatter: React.FC = () => {
               // Check if it looks like an array of objects
               // We check the first non-null item to guess type
               const firstItem = parsedData.find(item => item !== null && item !== undefined);
-              if (typeof firstItem === 'object') {
+              
+              // Special case for CSV result (which produces Array of Objects) or just JSON array of objects
+              if (typeof firstItem === 'object' && !Array.isArray(firstItem)) {
                   isArrayOfObjects = true;
                   const keys = new Set<string>();
                   parsedData.forEach(item => {
@@ -287,10 +407,17 @@ const JsonFormatter: React.FC = () => {
                   });
                   headers = Array.from(keys);
                   rows = parsedData;
+              } else if (Array.isArray(firstItem)) {
+                   // Array of Arrays (e.g. simple CSV without headers parsed as rows)
+                   // We treat the longest row as the header count source
+                   const maxLen = Math.max(...parsedData.map((r: any[]) => r.length));
+                   headers = Array.from({length: maxLen}, (_, i) => `Col ${i+1}`);
+                   rows = parsedData;
               } else {
                    // Primitives
                    headers = ['Index', 'Value'];
                    rows = parsedData.map((val, idx) => ({ Index: idx, Value: val }));
+                   isArrayOfObjects = true; // Treated as object for rendering logic below
               }
           } else {
               // Empty array
@@ -301,6 +428,7 @@ const JsonFormatter: React.FC = () => {
           // Case: Single Object
           headers = ['Key', 'Value'];
           rows = Object.entries(parsedData).map(([k, v]) => ({ Key: k, Value: v })); 
+          isArrayOfObjects = true;
       } else {
           // Case: Primitive root
           return <div className="p-4 text-gray-500 text-center">此資料類型 ({typeof parsedData}) 不支援表格檢視。</div>;
@@ -308,80 +436,156 @@ const JsonFormatter: React.FC = () => {
 
       if (rows.length === 0) return <div className="p-8 text-gray-500 text-center">無資料可顯示 (Empty Array)。</div>;
 
+      // --- Processing: Filtering ---
+      let displayRows = rows;
+      if (tableFilter.trim()) {
+          const lowerFilter = tableFilter.toLowerCase();
+          displayRows = rows.filter(row => {
+              // Search in all fields
+              return headers.some(header => {
+                  const val = isArrayOfObjects ? row[header] : row[headers.indexOf(header)]; // Handle array of objects vs array of arrays
+                  if (val === null || val === undefined) return false;
+                  return String(val).toLowerCase().includes(lowerFilter);
+              });
+          });
+      }
+
+      // --- Processing: Sorting ---
+      if (sortConfig) {
+          displayRows = [...displayRows].sort((a, b) => {
+              const valA = isArrayOfObjects ? a[sortConfig.key] : a[headers.indexOf(sortConfig.key)];
+              const valB = isArrayOfObjects ? b[sortConfig.key] : b[headers.indexOf(sortConfig.key)];
+
+              if (valA === null || valA === undefined) return 1;
+              if (valB === null || valB === undefined) return -1;
+
+              if (typeof valA === 'number' && typeof valB === 'number') {
+                  return sortConfig.direction === 'asc' ? valA - valB : valB - valA;
+              } else {
+                  return sortConfig.direction === 'asc' 
+                      ? String(valA).localeCompare(String(valB)) 
+                      : String(valB).localeCompare(String(valA));
+              }
+          });
+      }
+
       return (
-          <div className="w-full h-full overflow-auto bg-white dark:bg-[#0e0e0f]">
-              <table className="min-w-full text-left text-sm whitespace-nowrap border-collapse">
-                  <thead className="bg-gray-100 dark:bg-[#1f1f21] sticky top-0 z-10 shadow-sm">
-                      <tr>
-                           {isArrayOfObjects && (
-                               <th className="p-3 border-b border-r border-gray-200 dark:border-[#3c4043] w-12 text-center text-gray-500 dark:text-gray-400 font-mono text-xs select-none">#</th>
-                           )}
-                           {headers.map(h => (
-                               <th key={h} className="p-3 font-semibold text-gray-700 dark:text-[#E8EAED] border-b border-gray-200 dark:border-[#3c4043] min-w-[100px]">
-                                   {h}
-                               </th>
-                           ))}
-                      </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100 dark:divide-[#3c4043]/50">
-                      {rows.map((row, idx) => (
-                          <tr key={idx} className="hover:bg-blue-50/50 dark:hover:bg-[#2a2b2e] transition-colors group">
-                              {isArrayOfObjects ? (
-                                  <>
-                                      <td className="p-3 text-gray-400 text-xs text-center border-r border-gray-100 dark:border-[#3c4043] bg-gray-50 dark:bg-[#18181a] group-hover:bg-blue-100/50 dark:group-hover:bg-[#303134]">
-                                          {idx + 1}
-                                      </td>
-                                      {headers.map(header => {
-                                          const val = row[header];
-                                          let displayVal = val;
-                                          const isObj = typeof val === 'object' && val !== null;
-                                          if (isObj) displayVal = JSON.stringify(val);
-                                          
-                                          return (
-                                              <td key={header} className="p-3 text-gray-700 dark:text-[#A8C7FA] font-mono border-r border-transparent dark:border-transparent">
-                                                  <div className="max-w-[300px] truncate" title={String(displayVal)}>
-                                                      {isObj ? <span className="text-gray-400 italic text-xs">{displayVal}</span> : String(displayVal ?? '')}
-                                                  </div>
-                                              </td>
-                                          )
-                                      })}
-                                  </>
-                              ) : (
-                                  headers.map(h => {
-                                      const val = row[h];
-                                      let displayVal = val;
-                                      const isObj = typeof val === 'object' && val !== null;
-                                      if (isObj) displayVal = JSON.stringify(val);
-                                      
-                                      return (
-                                          <td key={h} className="p-3 text-gray-700 dark:text-[#A8C7FA] font-mono">
-                                              <div className="max-w-[400px] truncate" title={String(displayVal)}>
-                                                  {isObj ? <span className="text-gray-400 italic text-xs">{displayVal}</span> : String(displayVal ?? '')}
-                                              </div>
-                                          </td>
-                                      )
-                                  })
+          <div className="w-full flex flex-col">
+              {/* Filter Input */}
+              <div className="p-2 border-b border-gray-100 dark:border-[#3c4043] bg-gray-50 dark:bg-[#18181a]">
+                   <input 
+                      type="text" 
+                      placeholder="🔍 篩選資料..." 
+                      className="w-full px-3 py-1.5 text-sm rounded-md border border-gray-300 dark:border-[#3c4043] bg-white dark:bg-[#0e0e0f] text-gray-800 dark:text-gray-200 focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 transition-all"
+                      value={tableFilter}
+                      onChange={(e) => setTableFilter(e.target.value)}
+                   />
+              </div>
+
+              {/* Table Wrapper - No fixed height in table mode to allow page scroll */}
+              <div className="w-full overflow-x-auto bg-white dark:bg-[#0e0e0f]">
+                  <table className="min-w-full text-left text-sm whitespace-nowrap border-collapse">
+                      <thead className="bg-gray-100 dark:bg-[#1f1f21] border-b border-gray-200 dark:border-[#3c4043]">
+                          <tr>
+                              {isArrayOfObjects && (
+                                  <th className="p-3 border-r border-gray-200 dark:border-[#3c4043] w-12 text-center text-gray-500 dark:text-gray-400 font-mono text-xs select-none">
+                                      #
+                                  </th>
                               )}
+                              {headers.map(h => (
+                                  <th 
+                                    key={h} 
+                                    onClick={() => requestSort(h)}
+                                    className="p-3 font-semibold text-gray-700 dark:text-[#E8EAED] border-r border-gray-200 dark:border-[#3c4043] min-w-[100px] cursor-pointer hover:bg-gray-200 dark:hover:bg-[#2a2b2e] transition-colors select-none group"
+                                  >
+                                      <div className="flex items-center justify-between gap-2">
+                                          <span>{h}</span>
+                                          <span className="text-gray-400 text-xs">
+                                              {sortConfig?.key === h ? (sortConfig.direction === 'asc' ? '▲' : '▼') : '↕'}
+                                          </span>
+                                      </div>
+                                  </th>
+                              ))}
                           </tr>
-                      ))}
-                  </tbody>
-              </table>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100 dark:divide-[#3c4043]/50">
+                          {displayRows.length === 0 ? (
+                              <tr>
+                                  <td colSpan={headers.length + (isArrayOfObjects ? 1 : 0)} className="p-8 text-center text-gray-400">
+                                      沒有符合的資料
+                                  </td>
+                              </tr>
+                          ) : (
+                              displayRows.map((row, idx) => (
+                                  <tr key={idx} className="hover:bg-blue-50/50 dark:hover:bg-[#2a2b2e] transition-colors group">
+                                      {isArrayOfObjects ? (
+                                          <>
+                                              <td className="p-3 text-gray-400 text-xs text-center border-r border-gray-100 dark:border-[#3c4043] bg-gray-50 dark:bg-[#18181a] group-hover:bg-blue-100/50 dark:group-hover:bg-[#303134]">
+                                                  {idx + 1}
+                                              </td>
+                                              {headers.map(header => {
+                                                  const val = row[header];
+                                                  let displayVal = val;
+                                                  const isObj = typeof val === 'object' && val !== null;
+                                                  if (isObj) displayVal = JSON.stringify(val);
+                                                  
+                                                  return (
+                                                      <td key={header} className="p-3 text-gray-700 dark:text-[#A8C7FA] font-mono border-r border-transparent dark:border-transparent">
+                                                          <div className="max-w-[300px] truncate" title={String(displayVal)}>
+                                                              {isObj ? <span className="text-gray-400 italic text-xs">{displayVal}</span> : String(displayVal ?? '')}
+                                                          </div>
+                                                      </td>
+                                                  )
+                                              })}
+                                          </>
+                                      ) : (
+                                          // Array of Arrays case
+                                          headers.map((_, colIdx) => {
+                                              const val = row[colIdx];
+                                              let displayVal = val;
+                                              const isObj = typeof val === 'object' && val !== null;
+                                              if (isObj) displayVal = JSON.stringify(val);
+                                              
+                                              return (
+                                                  <td key={colIdx} className="p-3 text-gray-700 dark:text-[#A8C7FA] font-mono">
+                                                      <div className="max-w-[400px] truncate" title={String(displayVal)}>
+                                                          {isObj ? <span className="text-gray-400 italic text-xs">{displayVal}</span> : String(displayVal ?? '')}
+                                                      </div>
+                                                  </td>
+                                              )
+                                          })
+                                      )}
+                                  </tr>
+                              ))
+                          )}
+                      </tbody>
+                  </table>
+              </div>
           </div>
       );
+  };
+
+  const getModeLabel = (m: string) => {
+      switch(m) {
+          case 'java': return 'Java Map';
+          case 'json': return 'JSON';
+          case 'csv': return 'CSV';
+          default: return m;
+      }
   };
 
   return (
     <div className="flex flex-col h-full gap-4">
       {/* Header */}
       <PageHeader 
-        title="JSON & Map Formatter"
+        title="Format Tool (JSON/Map/CSV)"
         icon="{}"
         description={
-            <span>格式化 JSON，支援解析 Java <code>Map.toString()</code> (格式如 <code>{`{key=val}`}</code>)。</span>
+            <span>格式化 JSON，支援解析 Java <code>Map.toString()</code> (格式如 <code>{`{key=val}`}</code>) 以及 CSV 格式。</span>
         }
         controls={
             <div className="flex bg-gray-100 dark:bg-[#202124] p-1 rounded-lg border border-gray-200 dark:border-[#3c4043]">
-                {(['auto', 'json', 'java'] as ParseMode[]).map((m) => (
+                {(['auto', 'json', 'java', 'csv'] as ParseMode[]).map((m) => (
                     <button
                         key={m}
                         onClick={() => { setMode(m); setDetectedMode(null); }}
@@ -391,7 +595,7 @@ const JsonFormatter: React.FC = () => {
                             : 'text-gray-500 dark:text-[#9AA0A6] hover:text-gray-800 dark:hover:text-[#E8EAED]'
                         }`}
                     >
-                        {m === 'auto' ? '⚡ 自動偵測' : m === 'json' ? 'JSON' : 'Java Map'}
+                        {m === 'auto' ? '⚡ 自動偵測' : getModeLabel(m)}
                     </button>
                 ))}
             </div>
@@ -401,7 +605,7 @@ const JsonFormatter: React.FC = () => {
       {/* Input */}
       <div className="flex-1 min-h-[200px] flex flex-col overflow-hidden">
         <TextArea 
-            label={`📥 輸入 (${mode === 'auto' ? '自動偵測' : mode === 'json' ? 'JSON' : 'Java Map'})`}
+            label={`📥 輸入 (${mode === 'auto' ? '自動偵測' : getModeLabel(mode)})`}
             placeholder="貼上你的資料..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -420,7 +624,8 @@ const JsonFormatter: React.FC = () => {
       </div>
 
       {/* Output */}
-      <div className="flex-[2] min-h-[200px] flex flex-col overflow-hidden">
+      {/* If ViewMode is table, allow it to grow indefinitely for page scrolling. If text, keep fixed height scrollable. */}
+      <div className={`${viewMode === 'table' ? 'min-h-[200px]' : 'flex-[2] min-h-[200px] flex flex-col overflow-hidden'}`}>
         {/* Custom Header for OutputBox */}
          <div className="flex justify-between items-center mb-2 px-1">
             <div className="flex items-center gap-3">
@@ -430,7 +635,7 @@ const JsonFormatter: React.FC = () => {
                 )}
                 {detectedMode && (
                     <span className="bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-[10px] px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-800">
-                        已偵測: {detectedMode === 'java' ? 'Java Map' : 'JSON'}
+                        已偵測: {getModeLabel(detectedMode)}
                     </span>
                 )}
             </div>
@@ -452,7 +657,12 @@ const JsonFormatter: React.FC = () => {
             </div>
          </div>
          
-        <div className={`flex-1 rounded-xl overflow-hidden border flex flex-col ${error ? 'border-red-300 dark:border-red-800' : 'border-green-200 dark:border-[#3c4043]'}`}>
+         {/* Container */}
+        <div className={`
+            rounded-xl border flex flex-col 
+            ${viewMode === 'table' ? 'h-auto overflow-visible bg-white dark:bg-[#0e0e0f]' : 'flex-1 overflow-hidden'}
+            ${error ? 'border-red-300 dark:border-red-800' : 'border-green-200 dark:border-[#3c4043]'}
+        `}>
             
             {viewMode === 'text' ? (
                 <>
@@ -482,9 +692,7 @@ const JsonFormatter: React.FC = () => {
                 </>
             ) : (
                 // Table Mode
-                <div className="flex-1 bg-white dark:bg-[#0e0e0f] overflow-hidden flex flex-col">
-                     {renderTable()}
-                </div>
+                renderTable()
             )}
          </div>
       </div>
