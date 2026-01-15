@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { TextArea, Button } from '../components/UI';
+import { TextArea, Button, PageHeader } from '../components/UI';
 
 // --- Types ---
 type DiffType = 'eq' | 'ins' | 'del';
@@ -439,24 +439,20 @@ const DiffViewer: React.FC = () => {
   return (
     <div className="flex flex-col h-full gap-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white dark:bg-[#18181a] border border-gray-200 dark:border-[#3c4043] p-4 rounded-xl shadow-sm shrink-0">
-        <div>
-            <h2 className="text-xl font-bold text-gray-800 dark:text-[#E8EAED] flex items-center gap-2">
-                <span className="text-2xl">⚖️</span> 文件比對工具
-            </h2>
-            <p className="text-sm text-gray-500 dark:text-[#9AA0A6] mt-1">
-                比較兩段文字的差異。支援行內文字差異高亮。
-            </p>
-        </div>
-        
-        {alignedRows && (
-            <div className="flex items-center gap-3 text-sm font-medium bg-gray-100 dark:bg-[#202124] px-4 py-2 rounded-full border border-gray-200 dark:border-[#3c4043]">
-                <span className="text-green-600 dark:text-green-400">+{stats.add} 新增</span>
-                <span className="w-px h-4 bg-gray-300 dark:bg-gray-600"></span>
-                <span className="text-red-600 dark:text-red-400">-{stats.del} 刪除</span>
-            </div>
-        )}
-      </div>
+      <PageHeader 
+        title="文件比對工具"
+        icon="⚖️"
+        description="比較兩段文字的差異。支援行內文字差異高亮。"
+        controls={
+            alignedRows && (
+                <div className="flex items-center gap-3 text-sm font-medium bg-gray-100 dark:bg-[#202124] px-4 py-2 rounded-full border border-gray-200 dark:border-[#3c4043]">
+                    <span className="text-green-600 dark:text-green-400">+{stats.add} 新增</span>
+                    <span className="w-px h-4 bg-gray-300 dark:bg-gray-600"></span>
+                    <span className="text-red-600 dark:text-red-400">-{stats.del} 刪除</span>
+                </div>
+            )
+        }
+      />
 
       {/* Input Area */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-[300px] shrink-0">

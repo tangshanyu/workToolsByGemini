@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { TextArea, Button, OutputBox } from '../components/UI';
+import { TextArea, Button, OutputBox, PageHeader } from '../components/UI';
 
 type ParseMode = 'auto' | 'json' | 'java';
 type ViewMode = 'text' | 'table';
@@ -373,32 +373,30 @@ const JsonFormatter: React.FC = () => {
   return (
     <div className="flex flex-col h-full gap-4">
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white dark:bg-[#18181a] border border-gray-200 dark:border-[#3c4043] p-4 rounded-xl shadow-sm shrink-0">
-        <div>
-            <h2 className="text-xl font-bold text-gray-800 dark:text-[#E8EAED] flex items-center gap-2">
-                <span className="text-2xl">{}</span> JSON & Map Formatter
-            </h2>
-            <p className="text-sm text-gray-500 dark:text-[#9AA0A6] mt-1">
-                格式化 JSON 或解析 Java <code>Map.toString()</code> (格式如 <code>{`{key=val}`}</code>)。
-            </p>
-        </div>
-        
-        <div className="flex bg-gray-100 dark:bg-[#202124] p-1 rounded-lg border border-gray-200 dark:border-[#3c4043]">
-            {(['auto', 'json', 'java'] as ParseMode[]).map((m) => (
-                <button
-                    key={m}
-                    onClick={() => { setMode(m); setDetectedMode(null); }}
-                    className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
-                        mode === m 
-                        ? 'bg-white dark:bg-[#004A77] text-blue-700 dark:text-[#C2E7FF] shadow-sm' 
-                        : 'text-gray-500 dark:text-[#9AA0A6] hover:text-gray-800 dark:hover:text-[#E8EAED]'
-                    }`}
-                >
-                    {m === 'auto' ? '⚡ 自動偵測' : m === 'json' ? 'JSON' : 'Java Map'}
-                </button>
-            ))}
-        </div>
-      </div>
+      <PageHeader 
+        title="JSON & Map Formatter"
+        icon="{}"
+        description={
+            <span>格式化 JSON，支援解析 Java <code>Map.toString()</code> (格式如 <code>{`{key=val}`}</code>)。</span>
+        }
+        controls={
+            <div className="flex bg-gray-100 dark:bg-[#202124] p-1 rounded-lg border border-gray-200 dark:border-[#3c4043]">
+                {(['auto', 'json', 'java'] as ParseMode[]).map((m) => (
+                    <button
+                        key={m}
+                        onClick={() => { setMode(m); setDetectedMode(null); }}
+                        className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
+                            mode === m 
+                            ? 'bg-white dark:bg-[#004A77] text-blue-700 dark:text-[#C2E7FF] shadow-sm' 
+                            : 'text-gray-500 dark:text-[#9AA0A6] hover:text-gray-800 dark:hover:text-[#E8EAED]'
+                        }`}
+                    >
+                        {m === 'auto' ? '⚡ 自動偵測' : m === 'json' ? 'JSON' : 'Java Map'}
+                    </button>
+                ))}
+            </div>
+        }
+      />
 
       {/* Input */}
       <div className="flex-1 min-h-[200px] flex flex-col overflow-hidden">

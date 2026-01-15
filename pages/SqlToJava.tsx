@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { TextArea, Button, OutputBox } from '../components/UI';
+import { TextArea, Button, OutputBox, PageHeader } from '../components/UI';
 
 // Mock Test SQL
 const TEST_SQL = `SELECT CB_DTA.CONTR_NO, CB_DTA.SELL_DEAL_ACC_DATE, CB_DTA.SELL_VLU_ACC_DATE, CB_DTA.SELL_SETT_ACC_DATE, CB_DTA.STCURR, CB_DTA.FIN_ASET_CTG_OPT_CTG, CB_DTA.FIN_ASET_CTG, CB_DTA.ACC_CTG, e.ACC_BASE, e.EVCURR, e.BIZ_CTG_1, f.TAX_FREE_MARK, e.BSCURR_FEXG_TYP, e.FEXG_TYP, e.NO_DIRRATE_YN_USE_CROSSRATE, t.CURR_DCML_LSD, SUM(CB_DTA.SELL_COST) AS TOT_SELL_COST, SUM(CB_DTA.SELL_DEAL_AMT) AS TOT_SELL_DEAL_AMT, SUM(CB_DTA.SELL_SETT_AMT) AS TOT_SELL_SETT_AMT FROM ( SELECT '1202-3000' AS ACC_PRD_COMB, ad.CONTR_NO, ad.ACC_CTG, ad.SELL_DEAL_DATE, ad.SELL_DEAL_ACC_DATE, ad.SELL_SETT_DATE, ad.SELL_SETT_ACC_DATE, ad.SELL_VLU_DATE, ad.SELL_VLU_ACC_DATE, ad.STCURR, ad.FIN_ASET_CTG_OPT_CTG, ad.FIN_ASET_CTG FROM AM_TX_SELL_CB ad WHERE ad.CONTR_NO IN ('Parm1') AND ad.FIN_ASET_CTG = '01' ) CB_DTA JOIN AM_C_MST e ON CB_DTA.CONTR_NO = e.CONTR_NO JOIN AM_C_SUB_CB f ON e.CONTR_NO = f.CONTR_NO JOIN COMM_CURR t ON t.CURR_CDE = e.EVCURR GROUP BY CB_DTA.CONTR_NO, CB_DTA.FIN_ASET_CTG_OPT_CTG ORDER BY CB_DTA.CONTR_NO, CB_DTA.FIN_ASET_CTG_OPT_CTG`;
@@ -193,15 +193,21 @@ const SqlToJava: React.FC = () => {
 
   return (
     <div className="space-y-6 pb-20">
+      <PageHeader 
+        title="SQL 轉 Java"
+        icon="☕"
+        description="將 SQL 轉換為 Java StringBuilder 格式，支援 Hibernate Scalar 生成。"
+        controls={
+            <Button variant="ghost" onClick={() => setInputSql(TEST_SQL)} className="text-xs py-1.5 px-3 bg-gray-100 dark:bg-[#303134]">
+                🧪 載入測試資料
+            </Button>
+        }
+      />
+
       <div className="flex flex-col gap-2">
-        <div className="flex justify-between items-end">
-          <h2 className="text-lg font-bold text-gray-700 dark:text-white">原始 SQL 輸入</h2>
-          <Button variant="ghost" onClick={() => setInputSql(TEST_SQL)} className="text-xs py-1 px-3">
-            🧪 載入測試資料
-          </Button>
-        </div>
         <div className="min-h-[200px]">
              <TextArea 
+              label="原始 SQL 輸入"
               value={inputSql}
               onChange={(e) => setInputSql(e.target.value)}
               placeholder="請在此輸入您的原始 SQL 語句..."

@@ -1,5 +1,42 @@
 import React, { useState, useRef, useEffect } from 'react';
 
+// --- PageHeader (Standardized Tool Header) ---
+interface PageHeaderProps {
+  title: string;
+  icon: React.ReactNode;
+  description: React.ReactNode;
+  controls?: React.ReactNode;
+  className?: string;
+}
+
+export const PageHeader: React.FC<PageHeaderProps> = ({ 
+  title, 
+  icon, 
+  description, 
+  controls,
+  className = ""
+}) => {
+  return (
+    <div className={`flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white dark:bg-[#18181a] border border-gray-200 dark:border-[#3c4043] p-5 rounded-xl shadow-sm shrink-0 transition-colors duration-300 ${className}`}>
+      <div>
+        <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
+          <span className="text-2xl">{icon}</span> 
+          {title}
+        </h2>
+        <div className="text-sm text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
+          {description}
+        </div>
+      </div>
+
+      {controls && (
+        <div className="flex items-center gap-3 self-end md:self-center">
+           {controls}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // --- Button ---
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'danger' | 'ghost';
@@ -12,13 +49,20 @@ export const Button: React.FC<ButtonProps> = ({
   className = '', 
   ...props 
 }) => {
-  const baseStyles = "px-5 py-2 rounded-full font-medium text-sm transition-colors duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-offset-studio-bg";
+  const baseStyles = "px-6 py-2.5 rounded-xl font-medium text-sm transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-transparent active:scale-95";
   
   const modeVariant = {
-      primary: "dark:bg-[#A8C7FA] dark:text-[#041E49] dark:hover:bg-[#D3E3FD] bg-blue-600 text-white hover:bg-blue-700",
-      secondary: "dark:bg-transparent dark:border dark:border-[#5f6368] dark:text-[#E8EAED] dark:hover:bg-[#303134] bg-white border border-gray-300 text-gray-700 hover:bg-gray-50",
-      danger: "dark:bg-[#410e0b] dark:text-[#f2b8b5] dark:hover:bg-[#5c1d1d] bg-red-100 text-red-900 hover:bg-red-200 border border-transparent",
-      ghost: "dark:text-[#A8C7FA] dark:hover:bg-[#A8C7FA]/10 text-blue-600 hover:bg-blue-50"
+      // Primary: Soft Blue (Light) | Solid Blue (Dark)
+      primary: "text-white bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-lg hover:shadow-xl dark:bg-none dark:bg-blue-600 dark:hover:bg-blue-700 dark:shadow-none border-0",
+      
+      // Secondary: Glassy (Light) | Solid Dark (Dark)
+      secondary: "text-gray-700 bg-white/70 hover:bg-white border border-white/50 shadow-sm dark:text-gray-300 dark:bg-[#202124] dark:hover:bg-[#2a2b2e] dark:border-[#3c4043] dark:shadow-none backdrop-blur-sm dark:backdrop-blur-none",
+      
+      // Danger: Soft Red (Light) | Solid Red (Dark)
+      danger: "text-white bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 shadow-md dark:bg-none dark:bg-red-600 dark:hover:bg-red-700 dark:shadow-none",
+      
+      // Ghost: Text only
+      ghost: "text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-[#202124]"
   }
 
   return (
@@ -58,14 +102,23 @@ export const TextArea: React.FC<TextAreaProps> = ({ label, monospace = true, cla
 
   return (
     <div className="w-full h-full flex flex-col">
-      {label && <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-[#E8EAED]">{label}</label>}
+      {label && <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300 ml-1">{label}</label>}
       
-      <div className={`flex-1 relative group border border-gray-300 dark:border-[#3c4043] rounded-md overflow-hidden focus-within:ring-1 focus-within:ring-[#A8C7FA] focus-within:border-[#A8C7FA] bg-white dark:bg-[#0b0b0c] ${className}`}>
+      <div className={`
+        flex-1 relative group overflow-hidden rounded-2xl dark:rounded-xl transition-all duration-300
+        bg-white/50 backdrop-blur-md border border-gray-200
+        dark:bg-[#09090b] dark:backdrop-blur-none dark:border-[#3c4043]
+        focus-within:border-blue-400 dark:focus-within:border-blue-500
+        focus-within:ring-4 focus-within:ring-blue-100 dark:focus-within:ring-0
+        shadow-sm dark:shadow-none
+        ${className}
+      `}>
         
         {/* Line Numbers Gutter */}
         <div 
           ref={lineNumbersRef}
-          className="absolute left-0 top-0 bottom-0 w-10 bg-gray-50 dark:bg-[#1e1e1e] border-r border-gray-200 dark:border-[#3c4043] text-right pr-2 pt-3 text-gray-400 dark:text-gray-600 text-sm font-mono overflow-hidden select-none"
+          className="absolute left-0 top-0 bottom-0 w-10 bg-gray-50/50 border-r border-gray-100 text-right pr-2 pt-3 text-gray-400 text-sm font-mono overflow-hidden select-none backdrop-blur-sm
+          dark:bg-[#121212] dark:border-[#3c4043] dark:text-gray-600 dark:backdrop-blur-none"
           aria-hidden="true"
         >
           <pre className="whitespace-pre-wrap font-mono text-sm leading-normal">{lineNumbers}</pre>
@@ -77,8 +130,8 @@ export const TextArea: React.FC<TextAreaProps> = ({ label, monospace = true, cla
           value={value}
           onChange={onChange}
           onScroll={handleScroll}
-          className={`w-full h-full pl-12 p-3 bg-transparent text-gray-900 dark:text-[#E8EAED] text-sm focus:outline-none resize-y leading-normal min-h-[120px]
-          ${monospace ? 'font-mono' : 'font-sans'} whitespace-pre`}
+          className={`w-full h-full pl-12 p-3 bg-transparent text-gray-800 dark:text-gray-200 text-sm focus:outline-none resize-y leading-normal min-h-[120px]
+          ${monospace ? 'font-mono' : 'font-sans'} whitespace-pre placeholder-gray-400 dark:placeholder-gray-600`}
           style={{ resize: 'vertical' }} // Ensure resize handle is visible and works
           spellCheck={false}
           {...props}
@@ -97,11 +150,18 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 export const Input: React.FC<InputProps> = ({ label, className = '', ...props }) => {
   return (
     <div className="w-full">
-      {label && <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-[#E8EAED]">{label}</label>}
+      {label && <label className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300 ml-1">{label}</label>}
       <input
-        className={`w-full bg-white dark:bg-[#0b0b0c] border border-gray-300 dark:border-[#3c4043] rounded-md px-3 py-2 
-        text-gray-900 dark:text-[#E8EAED] text-sm focus:outline-none focus:border-[#A8C7FA] focus:ring-1 focus:ring-[#A8C7FA] 
-        placeholder-gray-400 dark:placeholder-gray-600 transition-colors font-mono ${className}`}
+        className={`
+            w-full px-4 py-2.5 rounded-xl dark:rounded-xl transition-all duration-300
+            bg-white/50 backdrop-blur-md border border-gray-200
+            dark:bg-[#09090b] dark:backdrop-blur-none dark:border-[#3c4043]
+            text-gray-800 dark:text-gray-200 text-sm font-mono
+            focus:outline-none focus:border-blue-400 dark:focus:border-blue-500
+            focus:ring-4 focus:ring-blue-100 dark:focus:ring-0
+            placeholder-gray-400 dark:placeholder-gray-600 
+            ${className}
+        `}
         {...props}
       />
     </div>
@@ -117,10 +177,8 @@ interface OutputBoxProps {
 }
 
 export const OutputBox: React.FC<OutputBoxProps> = ({ title, content, placeholder = "結果將顯示於此...", isHtml = false }) => {
-  // Local state to handle edits. Initialized with prop content.
   const [localContent, setLocalContent] = useState(content);
 
-  // Sync local state when prop content changes
   useEffect(() => {
     setLocalContent(content);
   }, [content]);
@@ -129,13 +187,7 @@ export const OutputBox: React.FC<OutputBoxProps> = ({ title, content, placeholde
     if (!localContent) return;
     let textToCopy = localContent;
     
-    // For HTML content, if it was edited via contentEditable, localContent might vary. 
-    // But typically for copying we want the plain text if it's not a rich editor.
-    // If isHtml is true, localContent is the raw HTML string (if from prop) or innerText (if we did something else).
-    // Here we assume simple copy.
     if (isHtml) {
-        // Strip HTML tags for copy if desired, or copy raw HTML. 
-        // Usually users want the text representation of code.
         const temp = document.createElement('div');
         temp.innerHTML = localContent;
         textToCopy = temp.textContent || temp.innerText || "";
@@ -148,43 +200,45 @@ export const OutputBox: React.FC<OutputBoxProps> = ({ title, content, placeholde
   }
 
   const handleHtmlInput = (e: React.FormEvent<HTMLDivElement>) => {
-      // For contentEditable, we update state to avoid losing changes, 
-      // though updating state on every keystroke in contentEditable can reset cursor position.
-      // For this simple usage, we might just let the DOM handle it and only sync on copy?
-      // No, let's just leave it loosely managed for HTML to avoid cursor jumping.
-      // We won't update state here to avoid re-render cycles that kill selection.
+      // Content editable handling if needed
   }
 
   return (
     <div className="flex flex-col h-full group">
       <div className="flex justify-between items-center mb-2 px-1">
-        <h3 className="text-sm font-medium text-gray-700 dark:text-[#E8EAED] flex items-center gap-2">
+        <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300 flex items-center gap-2">
             {title}
-            <span className="text-[10px] bg-gray-200 dark:bg-[#303134] px-1.5 py-0.5 rounded text-gray-500 dark:text-gray-400 font-normal">可編輯</span>
+            <span className="text-[10px] bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full font-medium dark:bg-blue-900/30 dark:text-blue-300">可編輯</span>
         </h3>
         <button 
           onClick={handleCopy}
           disabled={!localContent}
-          className="text-xs flex items-center gap-1 text-[#0B57D0] dark:text-[#A8C7FA] hover:underline disabled:opacity-50 disabled:no-underline"
+          className="text-xs flex items-center gap-1.5 text-blue-600 hover:text-blue-800 transition-colors disabled:opacity-50 font-medium dark:text-blue-400 dark:hover:text-blue-300"
         >
-          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
           複製內容
         </button>
       </div>
-      <div className="flex-1 w-full bg-gray-50 dark:bg-[#000000] border border-gray-200 dark:border-[#3c4043] rounded-md overflow-hidden min-h-[100px] max-h-[600px] relative focus-within:ring-1 focus-within:ring-[#A8C7FA] focus-within:border-[#A8C7FA]">
+      
+      <div className={`
+        flex-1 w-full min-h-[120px] max-h-[600px] relative rounded-2xl dark:rounded-xl overflow-hidden transition-all duration-300
+        bg-gray-50/50 backdrop-blur-md border border-gray-200
+        dark:bg-[#09090b] dark:backdrop-blur-none dark:border-[#3c4043]
+        group-hover:border-blue-300 dark:group-hover:border-gray-500
+        focus-within:border-blue-400 dark:focus-within:border-blue-500
+        focus-within:ring-4 focus-within:ring-blue-100 dark:focus-within:ring-0
+      `}>
         {isHtml ? (
-            // HTML Mode (ContentEditable Div)
             <div 
-                className="w-full h-full p-3 overflow-auto text-sm focus:outline-none SQLCode"
+                className="w-full h-full p-4 overflow-auto text-sm focus:outline-none SQLCode text-gray-800 dark:text-gray-200"
                 contentEditable
                 suppressContentEditableWarning
                 onInput={handleHtmlInput}
                 dangerouslySetInnerHTML={{__html: localContent}}
             />
         ) : (
-            // Text Mode (Textarea)
             <textarea 
-                className="w-full h-full p-3 bg-transparent text-gray-900 dark:text-[#E8EAED] text-sm font-mono whitespace-pre focus:outline-none resize-y"
+                className="w-full h-full p-4 bg-transparent text-gray-800 dark:text-gray-200 text-sm font-mono whitespace-pre focus:outline-none resize-y placeholder-gray-400 dark:placeholder-gray-600"
                 value={localContent}
                 onChange={handleTextChange}
                 placeholder={placeholder}
@@ -193,7 +247,7 @@ export const OutputBox: React.FC<OutputBoxProps> = ({ title, content, placeholde
         )}
         
         {!localContent && isHtml && (
-             <div className="absolute top-3 left-3 text-gray-400 dark:text-gray-600 text-sm italic pointer-events-none">
+             <div className="absolute top-4 left-4 text-gray-400 dark:text-gray-600 text-sm italic pointer-events-none">
                 {placeholder}
              </div>
         )}

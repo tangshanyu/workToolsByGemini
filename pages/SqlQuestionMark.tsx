@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { TextArea, Input, Button, OutputBox } from '../components/UI';
+import { TextArea, Input, Button, OutputBox, PageHeader } from '../components/UI';
 
 const SqlQuestionMark: React.FC = () => {
   const [sql, setSql] = useState('');
@@ -51,26 +51,33 @@ const SqlQuestionMark: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="bg-green-50/50 dark:bg-[#0F5223]/20 border border-green-200 dark:border-[#0F5223] p-4 rounded-lg text-green-800 dark:text-[#C4EED0] text-sm">
-        <strong>✨ 使用說明：</strong> 輸入包含問號 (?) 的 SQL 語句，並提供對應的參數陣列。
-        <div className="mt-2 p-2 bg-white/50 dark:bg-black/20 rounded font-mono text-xs">
-          參數範例：[15761, 02, BCTOM0001, 2024/06/04]
-        </div>
+      <PageHeader 
+        title="SQL 問號轉換"
+        icon="❓"
+        description={
+            <span>
+                輸入包含問號 (?) 的 SQL 語句，並提供對應的參數陣列。
+                <br/>
+                <span className="text-gray-400 text-xs mt-1 block">參數範例：<code className="bg-gray-100 dark:bg-black/30 px-1 py-0.5 rounded">[15761, 02, BCTOM0001, 2024/06/04]</code></span>
+            </span>
+        }
+      />
+
+      <div className="p-5 rounded-2xl dark:rounded-xl bg-white/40 backdrop-blur-xl border border-white/50 shadow-xl dark:bg-[#18181a] dark:backdrop-blur-none dark:border-[#2d2d30] dark:shadow-none space-y-4">
+          <TextArea 
+            label="📝 原始 SQL（含 ?）："
+            placeholder="SELECT * FROM Users WHERE ID = ? AND Role = ? ..."
+            value={sql}
+            onChange={(e) => setSql(e.target.value)}
+          />
+
+          <Input 
+            label="⚙️ 參數陣列："
+            placeholder="[參數1, 參數2, ...]"
+            value={paramsString}
+            onChange={(e) => setParamsString(e.target.value)}
+          />
       </div>
-
-      <TextArea 
-        label="📝 原始 SQL（含 ?）："
-        placeholder="SELECT * FROM Users WHERE ID = ? AND Role = ? ..."
-        value={sql}
-        onChange={(e) => setSql(e.target.value)}
-      />
-
-      <Input 
-        label="⚙️ 參數陣列："
-        placeholder="[參數1, 參數2, ...]"
-        value={paramsString}
-        onChange={(e) => setParamsString(e.target.value)}
-      />
 
       <Button onClick={handleConvert} variant="danger" className="w-full md:w-auto">
         🚀 轉換並格式化
