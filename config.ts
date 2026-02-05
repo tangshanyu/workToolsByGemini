@@ -48,6 +48,13 @@ export const TOOLS: NavItem[] = [
     categoryId: 'data-fmt',
     desc: "格式化 JSON，支援解析 Java Map toString() 格式與表格檢視。"
   },
+  {
+    path: '/domain-convert',
+    label: 'Domain 轉換',
+    icon: '📋',
+    categoryId: 'data-fmt',
+    desc: "依據 Domain 序號查找對應的 UI 型態與長度，產生可直接貼入 Word 表格的格式。"
+  },
 
   // --- General Utilities ---
   {

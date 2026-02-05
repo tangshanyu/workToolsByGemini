@@ -8,6 +8,7 @@ import SqlQuestionMark from './pages/SqlQuestionMark';
 import ParamObjectivizer from './pages/ParamObjectivizer';
 import DiffViewer from './pages/DiffViewer';
 import JsonFormatter from './pages/JsonFormatter';
+import DomainConverter from './pages/DomainConverter';
 
 const App: React.FC = () => {
   return (
@@ -21,6 +22,7 @@ const App: React.FC = () => {
           <Route path="/obj-converter" element={<ParamObjectivizer />} />
           <Route path="/diff-viewer" element={<DiffViewer />} />
           <Route path="/json-format" element={<JsonFormatter />} />
+          <Route path="/domain-convert" element={<DomainConverter />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Layout>
