@@ -3,6 +3,7 @@ declare global {
   interface Window {
     PoorSQL?: {
       format: (sql: string, options?: any) => string;
+      formatHtml: (sql: string, options?: any) => string;
     };
   }
 }

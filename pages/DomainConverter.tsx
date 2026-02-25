@@ -135,15 +135,15 @@ const DomainConverter: React.FC = () => {
     // Build map for quick lookup
     const domainMap = useMemo(() => {
         const map = new Map<string, DomainInfo>();
-        
+
         const rows: string[][] = [];
         let currentRow: string[] = [];
         let currentVal = '';
         let insideQuote = false;
-        
+
         // CSV Parsing Logic
         const cleanText = sourceData.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-        
+
         for (let i = 0; i < cleanText.length; i++) {
             const char = cleanText[i];
             const nextChar = cleanText[i + 1];
@@ -152,7 +152,7 @@ const DomainConverter: React.FC = () => {
                 if (insideQuote && nextChar === '"') {
                     // Escaped quote
                     currentVal += '"';
-                    i++; 
+                    i++;
                 } else {
                     insideQuote = !insideQuote;
                 }
@@ -170,19 +170,19 @@ const DomainConverter: React.FC = () => {
                 currentVal += char;
             }
         }
-        
+
         // Push last field/row if exists
         if (currentVal || currentRow.length > 0) {
             currentRow.push(currentVal);
             rows.push(currentRow);
         }
-        
+
         rows.forEach((cols, index) => {
             // Skip empty rows or header if present
             if (cols.length === 0) return;
             // Header Check: if first col is 'SN' and it's the first row
             if (index === 0 && cols[0].trim().toUpperCase() === 'SN') return;
-            
+
             // CSV Structure:
             // 0: SN (ID)
             // 1: Domain說明
@@ -197,7 +197,7 @@ const DomainConverter: React.FC = () => {
                 const id = cols[0]?.trim();
                 const uiType = cols[4]?.trim() || '';
                 const uiLength = cols[5]?.trim() || '';
-                
+
                 if (id) {
                     map.set(id, { uiType, uiLength });
                 }
@@ -243,7 +243,7 @@ const DomainConverter: React.FC = () => {
                 description={
                     <span>
                         輸入 Domain 序號（一行一個），自動查找並輸出 <code>UI型態</code> 與 <code>UI長度</code>。
-                        <br/>
+                        <br />
                         <span className="text-gray-400 text-xs mt-1 block">
                             輸出結果使用 Tab 分隔，可直接複製並貼入 Microsoft Word 的表格中。
                         </span>
@@ -285,15 +285,15 @@ const DomainConverter: React.FC = () => {
             </div>
 
             {/* Config Section (Toggleable) */}
-            <div className="border-t border-gray-200 dark:border-[#3c4043] pt-4">
-                <button 
+            <div className="border-t border-gray-200 dark:border-[#333] pt-4">
+                <button
                     onClick={() => setIsSourceVisible(!isSourceVisible)}
                     className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors mb-2 font-medium"
                 >
                     <span className={`transform transition-transform duration-200 ${isSourceVisible ? 'rotate-90' : ''}`}>▶</span>
                     ⚙️ 參照表設定 (Source Data - CSV)
                 </button>
-                
+
                 {isSourceVisible && (
                     <div className="animate-fade-in">
                         <p className="text-xs text-gray-400 mb-2">

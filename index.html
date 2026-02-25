@@ -1,111 +1,178 @@
 <!DOCTYPE html>
 <html lang="zh-TW" class="dark">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>SQL Dev Toolkit</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        darkMode: 'class',
-        theme: {
-          extend: {
-            colors: {
-              // Style A: Light Mode Palette (Pastel/Glass)
-              glass: {
-                base: 'rgba(255, 255, 255, 0.4)',
-                border: 'rgba(255, 255, 255, 0.6)',
-                text: '#1F2937',
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SQL Dev Toolkit</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            // Style A: Light Mode Palette (Pastel/Glass)
+            glass: {
+              base: 'rgba(255, 255, 255, 0.4)',
+              border: 'rgba(255, 255, 255, 0.6)',
+              text: '#1F2937',
+            },
+            // Original Dark Theme Colors (Google Studio / VS Code style)
+            studio: {
+              bg: '#141414',       // Main Background (softer dark)
+              panel: '#1E1E1E',    // Card/Panel Background
+              border: '#333',      // Border
+              text: '#D4D4D4',     // Primary Text
+              muted: '#A1A1AA',    // Secondary Text
+              input: '#1E1E1E'     // Input fields
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+            mono: ['"JetBrains Mono"', '"Fira Code"', 'Consolas', 'Monaco', 'monospace'],
+          },
+          animation: {
+            blob: "blob 10s infinite",
+            'pulse-slow': "pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+          },
+          keyframes: {
+            blob: {
+              "0%": {
+                transform: "translate(0px, 0px) scale(1)",
               },
-              // Original Dark Theme Colors (Google Studio / VS Code style)
-              studio: {
-                bg: '#0e0e0f',       // Main Background
-                panel: '#18181a',    // Card/Panel Background
-                border: '#2d2d30',   // Border
-                text: '#E2E8F0',     // Primary Text
-                muted: '#A1A1AA',    // Secondary Text
-                input: '#202124'     // Input fields
-              }
-            },
-            fontFamily: {
-              sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
-              mono: ['"JetBrains Mono"', '"Fira Code"', 'Consolas', 'Monaco', 'monospace'],
-            },
-            animation: {
-              blob: "blob 10s infinite",
-              'pulse-slow': "pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite",
-            },
-            keyframes: {
-              blob: {
-                "0%": {
-                  transform: "translate(0px, 0px) scale(1)",
-                },
-                "33%": {
-                  transform: "translate(30px, -50px) scale(1.1)",
-                },
-                "66%": {
-                  transform: "translate(-20px, 20px) scale(0.9)",
-                },
-                "100%": {
-                  transform: "translate(0px, 0px) scale(1)",
-                },
+              "33%": {
+                transform: "translate(30px, -50px) scale(1.1)",
+              },
+              "66%": {
+                transform: "translate(-20px, 20px) scale(0.9)",
+              },
+              "100%": {
+                transform: "translate(0px, 0px) scale(1)",
               },
             },
-          }
+          },
         }
       }
-    </script>
-    <style>
-      body {
-        margin: 0;
-        padding: 0;
-        transition: background-color 0.3s ease, color 0.2s ease;
-        overflow-x: hidden;
-      }
-      
-      /* --- Dark Mode : Original Professional Dark (Solid Colors) --- */
-      .dark body {
-        background-color: #0e0e0f; /* Original Dark Gray */
-        color: #E2E8F0;
-        background-image: none;
-      }
+    }
+  </script>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      transition: background-color 0.3s ease, color 0.2s ease;
+      overflow-x: hidden;
+    }
 
-      /* --- Light Mode : Mesh/Aurora Base --- */
-      body:not(.dark) {
-        background-color: #F3F4F6;
-        color: #1F2937;
-      }
+    /* --- Dark Mode : Original Professional Dark (Solid Colors) --- */
+    .dark body {
+      background-color: #141414;
+      /* Softer Dark */
+      color: #D4D4D4;
+      background-image: none;
+    }
 
-      /* Custom Scrollbar - Refined */
-      ::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
-      }
-      ::-webkit-scrollbar-track {
-        background: transparent; 
-      }
-      ::-webkit-scrollbar-thumb {
-        border-radius: 4px;
-        background-color: rgba(156, 163, 175, 0.5);
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background-color: rgba(107, 114, 128, 0.8);
-      }
-      
-      /* Code Font Formatting */
-      .SQLCode {
-        font-family: "JetBrains Mono", Consolas, monospace;
-        white-space: pre-wrap;
-        word-break: break-all;
-        font-size: 14px;
-        line-height: 1.6;
-      }
-    </style>
-    
-    <!-- Load local PoorSQL library directly -->
-    <script src="./poorsql.js"></script>
+    /* --- Light Mode : Mesh/Aurora Base --- */
+    body:not(.dark) {
+      background-color: #F3F4F6;
+      color: #1F2937;
+    }
 
-    <script type="importmap">
+    /* Custom Scrollbar - Refined */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      border-radius: 4px;
+      background-color: rgba(156, 163, 175, 0.5);
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background-color: rgba(107, 114, 128, 0.8);
+    }
+
+    /* Code Font Formatting */
+    .SQLCode {
+      font-family: "JetBrains Mono", Consolas, monospace;
+      white-space: pre-wrap;
+      word-break: break-all;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    /* === PoorSQL Syntax Coloring (matches poorsql.com) === */
+    .SQLKeyword {
+      color: #0000FF;
+      font-weight: bold;
+    }
+
+    /* Blue */
+    .SQLComment {
+      color: #008000;
+      font-style: italic;
+    }
+
+    /* Green */
+    .SQLString {
+      color: #FF0000;
+    }
+
+    /* Red */
+    .SQLOperator {
+      color: #808080;
+    }
+
+    /* Gray */
+    .SQLFunction {
+      color: #FF00FF;
+    }
+
+    /* Magenta */
+    .SQLErrorHighlight {
+      background-color: #FFC0C0;
+    }
+
+    /* Dark mode overrides for better readability */
+    .dark .SQLKeyword {
+      color: #569CD6;
+    }
+
+    /* VS Code blue */
+    .dark .SQLComment {
+      color: #6A9955;
+    }
+
+    /* VS Code green */
+    .dark .SQLString {
+      color: #CE9178;
+    }
+
+    /* VS Code orange-red */
+    .dark .SQLOperator {
+      color: #B4B4B4;
+    }
+
+    /* Light gray */
+    .dark .SQLFunction {
+      color: #DCDCAA;
+    }
+
+    /* VS Code yellow */
+    .dark .SQLErrorHighlight {
+      background-color: rgba(255, 80, 80, 0.25);
+    }
+  </style>
+
+  <!-- Load local PoorSQL library directly -->
+  <script src="./poorsql.js"></script>
+
+  <script type="importmap">
 {
   "imports": {
     "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
@@ -116,9 +183,11 @@
 }
 </script>
 </head>
-  <body>
-    <div id="root"></div>
-    <!-- Entry point for the React Application -->
-    <script type="module" src="/index.tsx"></script>
-  </body>
+
+<body>
+  <div id="root"></div>
+  <!-- Entry point for the React Application -->
+  <script type="module" src="/index.tsx"></script>
+</body>
+
 </html>

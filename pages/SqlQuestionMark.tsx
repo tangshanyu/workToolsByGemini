@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { TextArea, Input, Button, OutputBox, PageHeader } from '../components/UI';
+import { formatSqlText, formatSqlHtml } from '../utils/sqlFormatConfig';
 
 const SqlQuestionMark: React.FC = () => {
   const [sql, setSql] = useState('');
   const [paramsString, setParamsString] = useState('');
   const [output, setOutput] = useState('');
+  const [outputHtml, setOutputHtml] = useState('');
 
   const handleConvert = () => {
     if (!sql.trim()) return alert("請輸入 SQL 語句");
@@ -19,7 +21,7 @@ const SqlQuestionMark: React.FC = () => {
 
       // Split by comma, careful with commas inside quotes if needed (simple split for now based on prompt logic)
       const params = match[1].split(',').map(p => p.trim());
-      
+
       const questionMarksCount = (sql.match(/\?/g) || []).length;
 
       if (params.length !== questionMarksCount) {
@@ -34,13 +36,15 @@ const SqlQuestionMark: React.FC = () => {
         result = result.replace(/\?/, `'${param}'`);
       });
 
-      // Auto-format using PoorSQL if available
+      // Auto-format using shared config
       try {
-        if (typeof window.PoorSQL !== 'undefined') {
-             result = window.PoorSQL.format(result);
-        }
-      } catch(e) {
-          console.warn("Formatting failed, using raw output");
+        const rawSql = result;
+        result = formatSqlText(rawSql);
+        const html = formatSqlHtml(rawSql);
+        setOutputHtml(html);
+      } catch (e) {
+        console.warn("Formatting failed, using raw output");
+        setOutputHtml('');
       }
 
       setOutput(result);
@@ -51,39 +55,39 @@ const SqlQuestionMark: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <PageHeader 
+      <PageHeader
         title="SQL 問號轉換"
         icon="❓"
         description={
-            <span>
-                輸入包含問號 (?) 的 SQL 語句，並提供對應的參數陣列。
-                <br/>
-                <span className="text-gray-400 text-xs mt-1 block">參數範例：<code className="bg-gray-100 dark:bg-black/30 px-1 py-0.5 rounded">[15761, 02, BCTOM0001, 2024/06/04]</code></span>
-            </span>
+          <span>
+            輸入包含問號 (?) 的 SQL 語句，並提供對應的參數陣列。
+            <br />
+            <span className="text-gray-400 text-xs mt-1 block">參數範例：<code className="bg-gray-100 dark:bg-black/30 px-1 py-0.5 rounded">[15761, 02, BCTOM0001, 2024/06/04]</code></span>
+          </span>
         }
       />
 
-      <div className="p-5 rounded-2xl dark:rounded-xl bg-white/40 backdrop-blur-xl border border-white/50 shadow-xl dark:bg-[#18181a] dark:backdrop-blur-none dark:border-[#2d2d30] dark:shadow-none space-y-4">
-          <TextArea 
-            label="📝 原始 SQL（含 ?）："
-            placeholder="SELECT * FROM Users WHERE ID = ? AND Role = ? ..."
-            value={sql}
-            onChange={(e) => setSql(e.target.value)}
-          />
+      <div className="p-5 rounded-xl bg-white/40 backdrop-blur-xl border border-white/50 shadow-xl dark:bg-[#1E1E1E] dark:backdrop-blur-none dark:border-[#333] dark:shadow-none space-y-4">
+        <TextArea
+          label="📝 原始 SQL（含 ?）："
+          placeholder="SELECT * FROM Users WHERE ID = ? AND Role = ? ..."
+          value={sql}
+          onChange={(e) => setSql(e.target.value)}
+        />
 
-          <Input 
-            label="⚙️ 參數陣列："
-            placeholder="[參數1, 參數2, ...]"
-            value={paramsString}
-            onChange={(e) => setParamsString(e.target.value)}
-          />
+        <Input
+          label="⚙️ 參數陣列："
+          placeholder="[參數1, 參數2, ...]"
+          value={paramsString}
+          onChange={(e) => setParamsString(e.target.value)}
+        />
       </div>
 
       <Button onClick={handleConvert} variant="danger" className="w-full md:w-auto">
         🚀 轉換並格式化
       </Button>
 
-      <OutputBox title="✨ 轉換後的 SQL" content={output} />
+      <OutputBox title="✨ 轉換後的 SQL" content={outputHtml || output} isHtml={!!outputHtml} />
     </div>
   );
 };

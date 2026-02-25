@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { TextArea, Button, Input, OutputBox, PageHeader } from '../components/UI';
+import { formatSqlText, formatSqlHtml } from '../utils/sqlFormatConfig';
 
 const SqlParamReplacer: React.FC = () => {
   const [sql, setSql] = useState('');
   const [params, setParams] = useState<string[]>([]);
   const [paramValues, setParamValues] = useState<Record<string, string>>({});
   const [output, setOutput] = useState('');
+  const [outputHtml, setOutputHtml] = useState('');
 
   const extractParams = () => {
     // Match 'Parm1', 'Parm2', '%Parm1%', 'Parm1%', '%Parm1'
@@ -19,17 +21,17 @@ const SqlParamReplacer: React.FC = () => {
     // Extract core param names
     const uniqueKeys = new Set<string>();
     matches.forEach(match => {
-        const coreName = match.replace(/'/g, '').replace(/^%/, '').replace(/%$/, '');
-        uniqueKeys.add(coreName);
+      const coreName = match.replace(/'/g, '').replace(/^%/, '').replace(/%$/, '');
+      uniqueKeys.add(coreName);
     });
 
     const sortedParams = Array.from(uniqueKeys).sort();
     setParams(sortedParams);
-    
+
     // Initialize values map
     const newValues: Record<string, string> = {};
     sortedParams.forEach((p: string) => {
-        newValues[p] = paramValues[p] || '';
+      newValues[p] = paramValues[p] || '';
     });
     setParamValues(newValues);
   };
@@ -40,10 +42,10 @@ const SqlParamReplacer: React.FC = () => {
 
   const executeReplace = () => {
     let result = sql;
-    
+
     if (params.length === 0) {
-        alert("請先掃描參數");
-        return;
+      alert("請先掃描參數");
+      return;
     }
 
     params.forEach(key => {
@@ -56,11 +58,13 @@ const SqlParamReplacer: React.FC = () => {
     });
 
     try {
-        if (typeof window.PoorSQL !== 'undefined') {
-             result = window.PoorSQL.format(result);
-        }
-    } catch(e) {
-        console.warn("Formatting failed, using raw output");
+      const rawSql = result;
+      result = formatSqlText(rawSql);
+      const html = formatSqlHtml(rawSql);
+      setOutputHtml(html);
+    } catch (e) {
+      console.warn("Formatting failed, using raw output");
+      setOutputHtml('');
     }
 
     setOutput(result);
@@ -68,17 +72,17 @@ const SqlParamReplacer: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <PageHeader 
+      <PageHeader
         title="SQL 參數替換"
         icon="🔧"
         description={
-            <span>
-                輸入包含 <code>'Parm1'</code>, <code>'%Parm2%'</code> (模糊搜尋) 等參數的 SQL 語句，點擊「🔍 掃描參數」，填入值後執行替換。
-            </span>
+          <span>
+            輸入包含 <code>'Parm1'</code>, <code>'%Parm2%'</code> (模糊搜尋) 等參數的 SQL 語句，點擊「🔍 掃描參數」，填入值後執行替換。
+          </span>
         }
       />
 
-      <TextArea 
+      <TextArea
         label="📝 輸入 SQL："
         placeholder="SELECT * FROM Table WHERE ID = 'Parm1' AND Name LIKE '%Parm2%'..."
         value={sql}
@@ -88,22 +92,22 @@ const SqlParamReplacer: React.FC = () => {
       <Button onClick={extractParams} className="w-full md:w-auto">🔍 掃描參數</Button>
 
       {params.length > 0 && (
-        <div className="p-5 rounded-2xl dark:rounded-xl bg-white/40 backdrop-blur-xl border border-white/50 shadow-xl dark:bg-[#18181a] dark:backdrop-blur-none dark:border-[#2d2d30] dark:shadow-none">
-            <h3 className="font-bold mb-4 text-sm text-gray-700 dark:text-gray-300 uppercase tracking-wider flex items-center gap-2">
-                ⚙️ 參數輸入
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {params.map(param => (
-                    <div key={param} className="flex flex-col gap-1">
-                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400 font-mono ml-1">{param}</label>
-                        <Input 
-                            value={paramValues[param]} 
-                            onChange={(e) => handleParamValueChange(param, e.target.value)}
-                            placeholder={`輸入 ${param} 的值`}
-                        />
-                    </div>
-                ))}
-            </div>
+        <div className="p-5 rounded-xl bg-white/40 backdrop-blur-xl border border-white/50 shadow-xl dark:bg-[#1E1E1E] dark:backdrop-blur-none dark:border-[#333] dark:shadow-none">
+          <h3 className="font-bold mb-4 text-sm text-gray-700 dark:text-gray-300 uppercase tracking-wider flex items-center gap-2">
+            ⚙️ 參數輸入
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {params.map(param => (
+              <div key={param} className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-gray-500 dark:text-gray-400 font-mono ml-1">{param}</label>
+                <Input
+                  value={paramValues[param]}
+                  onChange={(e) => handleParamValueChange(param, e.target.value)}
+                  placeholder={`輸入 ${param} 的值`}
+                />
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -111,7 +115,7 @@ const SqlParamReplacer: React.FC = () => {
         🚀 執行替換
       </Button>
 
-      <OutputBox title="✨ 最終 SQL" content={output} />
+      <OutputBox title="✨ 最終 SQL" content={outputHtml || output} isHtml={!!outputHtml} />
     </div>
   );
 };
