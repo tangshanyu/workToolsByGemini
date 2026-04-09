@@ -9,6 +9,7 @@ import ParamObjectivizer from './pages/ParamObjectivizer';
 import DiffViewer from './pages/DiffViewer';
 import JsonFormatter from './pages/JsonFormatter';
 import DomainConverter from './pages/DomainConverter';
+import CsvEditor from './pages/CsvEditor';
 
 const App: React.FC = () => {
   return (
@@ -23,6 +24,7 @@ const App: React.FC = () => {
           <Route path="/diff-viewer" element={<DiffViewer />} />
           <Route path="/json-format" element={<JsonFormatter />} />
           <Route path="/domain-convert" element={<DomainConverter />} />
+          <Route path="/csv-editor" element={<CsvEditor />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Layout>

@@ -55,6 +55,13 @@ export const TOOLS: NavItem[] = [
     categoryId: 'data-fmt',
     desc: "依據 Domain 序號查找對應的 UI 型態與長度，產生可直接貼入 Word 表格的格式。"
   },
+  {
+    path: '/csv-editor',
+    label: 'CSV 編輯器',
+    icon: '📊',
+    categoryId: 'data-fmt',
+    desc: "匯入 CSV 檔案或貼上文字，以表格方式編輯後匯出下載。"
+  },
 
   // --- General Utilities ---
   {
