@@ -167,29 +167,143 @@ function parsePattern(text: string): FieldDef[] {
   return results;
 }
 
-// --- Generate fixed-width line ---
-function generateLine(fields: FieldDef[], values: Record<number, string>): string {
-  if (fields.length === 0) return '';
-  const totalLength = Math.max(...fields.map(f => f.end));
-  const line = new Array(totalLength).fill(' ');
+// --- Encoding Utilities ---
+const ENCODINGS = [
+  { value: 'UTF-8', label: 'UTF-8' },
+  { value: 'Big5', label: 'Big5 (繁體中文)' },
+  { value: 'ASCII', label: 'ASCII' },
+  { value: 'Shift_JIS', label: 'Shift_JIS (日文)' },
+  { value: 'GBK', label: 'GBK (簡體中文)' },
+];
 
-  fields.forEach(f => {
-    const raw = values[f.seq] || '';
-    const val = raw.padEnd(f.length, ' ').substring(0, f.length);
-    for (let i = 0; i < f.length; i++) {
-      line[f.start - 1 + i] = val[i];
-    }
-  });
-
-  return line.join('');
+// Calculate byte length of a string in a given encoding
+// For fixed-width formats, "length" usually means byte length
+function getByteLength(str: string, encoding: string): number {
+  if (encoding === 'ASCII') return str.length;
+  if (encoding === 'UTF-8') {
+    return new TextEncoder().encode(str).length;
+  }
+  // For Big5, GBK, Shift_JIS: ASCII=1byte, CJK=2bytes
+  let len = 0;
+  for (let i = 0; i < str.length; i++) {
+    const code = str.charCodeAt(i);
+    len += code > 0x7F ? 2 : 1;
+  }
+  return len;
 }
 
-// --- Parse fixed-width data line into values ---
-function parseLine(fields: FieldDef[], line: string): Record<number, string> {
-  const values: Record<number, string> = {};
-  fields.forEach(f => {
-    values[f.seq] = line.substring(f.start - 1, f.end).trimEnd();
+// Pad string to exact byte length
+function padToByteLength(str: string, targetBytes: number, encoding: string): string {
+  let result = '';
+  let currentBytes = 0;
+  for (let i = 0; i < str.length; i++) {
+    const charBytes = encoding === 'UTF-8'
+      ? new TextEncoder().encode(str[i]).length
+      : (str.charCodeAt(i) > 0x7F ? 2 : 1);
+    if (currentBytes + charBytes > targetBytes) break;
+    result += str[i];
+    currentBytes += charBytes;
+  }
+  // Fill remaining with spaces
+  while (currentBytes < targetBytes) {
+    result += ' ';
+    currentBytes += 1;
+  }
+  return result;
+}
+
+// Try to auto-detect encoding from file bytes
+function detectEncoding(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  // Check UTF-8 BOM
+  if (bytes.length >= 3 && bytes[0] === 0xEF && bytes[1] === 0xBB && bytes[2] === 0xBF) {
+    return 'UTF-8';
+  }
+  // Heuristic: scan for Big5 vs UTF-8
+  let isValidUtf8 = true;
+  let hasBig5Patterns = false;
+  for (let i = 0; i < Math.min(bytes.length, 4096); i++) {
+    if (bytes[i] > 0x7F) {
+      // Check UTF-8 multi-byte sequence
+      if ((bytes[i] & 0xE0) === 0xC0) {
+        if (i + 1 >= bytes.length || (bytes[i + 1] & 0xC0) !== 0x80) isValidUtf8 = false;
+        i += 1;
+      } else if ((bytes[i] & 0xF0) === 0xE0) {
+        if (i + 2 >= bytes.length || (bytes[i + 1] & 0xC0) !== 0x80 || (bytes[i + 2] & 0xC0) !== 0x80) isValidUtf8 = false;
+        i += 2;
+      } else {
+        // Check Big5 range: high byte 0x81-0xFE, low byte 0x40-0x7E or 0xA1-0xFE
+        if (bytes[i] >= 0x81 && bytes[i] <= 0xFE && i + 1 < bytes.length) {
+          const lo = bytes[i + 1];
+          if ((lo >= 0x40 && lo <= 0x7E) || (lo >= 0xA1 && lo <= 0xFE)) {
+            hasBig5Patterns = true;
+          }
+        }
+        isValidUtf8 = false;
+        i += 1;
+      }
+    }
+  }
+  if (isValidUtf8) return 'UTF-8';
+  if (hasBig5Patterns) return 'Big5';
+  return 'Big5'; // Default for Taiwan banking files
+}
+
+// --- Generate fixed-width line (byte-aware) ---
+function generateLine(fields: FieldDef[], values: Record<number, string>, encoding: string): string {
+  if (fields.length === 0) return '';
+  const totalLength = Math.max(...fields.map(f => f.end));
+  // Build line by padding each field to its byte length
+  let result = ' '.repeat(totalLength);
+
+  // Sort fields by start position
+  const sorted = [...fields].sort((a, b) => a.start - b.start);
+  sorted.forEach(f => {
+    const raw = values[f.seq] || '';
+    const padded = padToByteLength(raw, f.length, encoding);
+    result = result.substring(0, f.start - 1) + padded + result.substring(f.start - 1 + f.length);
   });
+
+  return result;
+}
+
+// --- Parse fixed-width data line into values (byte-aware) ---
+function parseLine(fields: FieldDef[], line: string, encoding: string): Record<number, string> {
+  const values: Record<number, string> = {};
+  // For byte-level slicing with non-ASCII encodings, we need byte-aware substring
+  if (encoding !== 'ASCII' && encoding !== 'UTF-8') {
+    // For Big5/GBK/Shift_JIS: convert to byte array, slice, decode back
+    try {
+      const encoder = new TextEncoder();
+      const encoded = encoder.encode(line);
+      // Re-encode with target encoding not possible in browser,
+      // so we use character-level approximation
+      fields.forEach(f => {
+        let bytePos = 0;
+        let charStart = 0, charEnd = 0;
+        for (let i = 0; i < line.length && bytePos < f.end; i++) {
+          const charBytes = line.charCodeAt(i) > 0x7F ? 2 : 1;
+          if (bytePos + charBytes <= f.start - 1) {
+            bytePos += charBytes;
+            charStart = i + 1;
+          } else if (bytePos < f.end) {
+            bytePos += charBytes;
+            charEnd = i + 1;
+          }
+        }
+        values[f.seq] = line.substring(charStart, charEnd).trimEnd();
+      });
+    } catch {
+      // Fallback to character-level
+      fields.forEach(f => {
+        values[f.seq] = line.substring(f.start - 1, f.end).trimEnd();
+      });
+    }
+  } else {
+    fields.forEach(f => {
+      values[f.seq] = line.substring(f.start - 1, f.end).trimEnd();
+    });
+  }
   return values;
 }
 
@@ -236,6 +350,7 @@ const FixedWidthProcessor: React.FC = () => {
   const [patternInput, setPatternInput] = useState('');
   const [editingTabId, setEditingTabId] = useState<string | null>(null);
   const [copiedAll, setCopiedAll] = useState(false);
+  const [encoding, setEncoding] = useState('Big5');
 
   const patternFileRef = useRef<HTMLInputElement>(null);
   const dataFileRef = useRef<HTMLInputElement>(null);
@@ -261,7 +376,7 @@ const FixedWidthProcessor: React.FC = () => {
     reader.onload = (ev) => {
       importPattern(ev.target?.result as string);
     };
-    reader.readAsText(file, 'UTF-8');
+    reader.readAsText(file, encoding);
     if (patternFileRef.current) patternFileRef.current.value = '';
   };
 
@@ -269,21 +384,29 @@ const FixedWidthProcessor: React.FC = () => {
   const handleDataFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // First read as ArrayBuffer for auto-detection, then decode
     const reader = new FileReader();
     reader.onload = (ev) => {
-      const text = ev.target?.result as string;
+      const buffer = ev.target?.result as ArrayBuffer;
+      const detected = detectEncoding(buffer);
+      const useEncoding = encoding === 'auto' ? detected : encoding;
+
+      // Decode with detected/selected encoding
+      const decoder = new TextDecoder(useEncoding);
+      const text = decoder.decode(buffer);
       const lines = text.split('\n').map(l => l.replace(/\r$/, '')).filter(l => l.trim());
       if (lines.length === 0) return;
 
       const newTabs: DataTab[] = lines.map((line, idx) => ({
         id: nextTabId(),
         label: `資料 ${idx + 1}`,
-        values: parseLine(fields, line),
+        values: parseLine(fields, line, useEncoding),
       }));
       setTabs(newTabs);
       setActiveTabId(newTabs[0].id);
     };
-    reader.readAsText(file, 'UTF-8');
+    reader.readAsArrayBuffer(file);
     if (dataFileRef.current) dataFileRef.current.value = '';
   };
 
@@ -320,12 +443,20 @@ const FixedWidthProcessor: React.FC = () => {
 
   // ---- Output ----
   const generateAllLines = useCallback((): string => {
-    return tabs.map(t => generateLine(fields, t.values)).join('\n');
-  }, [tabs, fields]);
+    return tabs.map(t => generateLine(fields, t.values, encoding)).join('\n');
+  }, [tabs, fields, encoding]);
 
   const handleDownload = () => {
     const content = generateAllLines();
-    const blob = new Blob([content], { type: 'text/plain;charset=utf-8;' });
+    // For non-UTF-8 encodings, try to use TextEncoder if available
+    let blob: Blob;
+    if (encoding === 'UTF-8' || encoding === 'ASCII') {
+      blob = new Blob([content], { type: 'text/plain;charset=' + encoding + ';' });
+    } else {
+      // Browser TextEncoder only supports UTF-8, so we export as UTF-8 with a note
+      // For Big5 etc., the user should use a text editor to convert
+      blob = new Blob([content], { type: 'text/plain;charset=utf-8;' });
+    }
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -352,7 +483,7 @@ const FixedWidthProcessor: React.FC = () => {
 
   // ---- Computed ----
   const totalLength = fields.length > 0 ? Math.max(...fields.map(f => f.end)) : 0;
-  const currentLine = activeTab ? generateLine(fields, activeTab.values) : '';
+  const currentLine = activeTab ? generateLine(fields, activeTab.values, encoding) : '';
   const hasPattern = fields.length > 0;
 
   // ============================================================
@@ -365,15 +496,31 @@ const FixedWidthProcessor: React.FC = () => {
         icon="📏"
         description="匯入格式定義（Pattern），以表格填入資料後匯出為定長 TXT 檔案。"
         controls={
-          hasPattern && (
-            <div className="flex items-center gap-2 text-sm font-medium bg-gray-100 dark:bg-[#252526] px-4 py-2 rounded-full border border-gray-200 dark:border-[#333]">
-              <span className="text-blue-600 dark:text-blue-400">{fields.length} 欄位</span>
-              <span className="w-px h-4 bg-gray-300 dark:bg-gray-600"></span>
-              <span className="text-green-600 dark:text-green-400">總長 {totalLength}</span>
-              <span className="w-px h-4 bg-gray-300 dark:bg-gray-600"></span>
-              <span className="text-purple-600 dark:text-purple-400">{tabs.length} 筆</span>
+          <div className="flex items-center gap-3">
+            {/* Encoding Selector */}
+            <div className="flex items-center gap-2 text-sm bg-gray-100 dark:bg-[#252526] px-3 py-1.5 rounded-full border border-gray-200 dark:border-[#333]">
+              <span className="text-gray-500 dark:text-gray-400 text-xs">編碼</span>
+              <select
+                value={encoding}
+                onChange={(e) => setEncoding(e.target.value)}
+                className="bg-transparent text-sm font-medium text-gray-700 dark:text-gray-200 border-none outline-none cursor-pointer"
+              >
+                {ENCODINGS.map(enc => (
+                  <option key={enc.value} value={enc.value}>{enc.label}</option>
+                ))}
+              </select>
             </div>
-          )
+
+            {hasPattern && (
+              <div className="flex items-center gap-2 text-sm font-medium bg-gray-100 dark:bg-[#252526] px-4 py-2 rounded-full border border-gray-200 dark:border-[#333]">
+                <span className="text-blue-600 dark:text-blue-400">{fields.length} 欄位</span>
+                <span className="w-px h-4 bg-gray-300 dark:bg-gray-600"></span>
+                <span className="text-green-600 dark:text-green-400">總長 {totalLength}</span>
+                <span className="w-px h-4 bg-gray-300 dark:bg-gray-600"></span>
+                <span className="text-purple-600 dark:text-purple-400">{tabs.length} 筆</span>
+              </div>
+            )}
+          </div>
         }
       />
 
@@ -528,7 +675,8 @@ const FixedWidthProcessor: React.FC = () => {
                 <tbody className="divide-y divide-gray-100 dark:divide-[#333]/50">
                   {fields.map((f) => {
                     const val = activeTab.values[f.seq] || '';
-                    const isOverLength = val.length > f.length;
+                    const byteLen = getByteLength(val, encoding);
+                    const isOverLength = byteLen > f.length;
                     return (
                       <tr key={f.seq} className="group hover:bg-blue-50/30 dark:hover:bg-[#2D2D2D] transition-colors">
                         <td className="p-2 text-center text-gray-400 dark:text-gray-500 text-xs font-mono bg-gray-50 dark:bg-[#1A1A1A] border-r border-gray-100 dark:border-[#333]">
@@ -564,21 +712,20 @@ const FixedWidthProcessor: React.FC = () => {
                         <td className="p-0">
                           <div className="relative">
                             <input
-                              className={`w-full p-2 bg-transparent font-mono text-sm focus:outline-none transition-colors ${
+                              className={`w-full p-2 pr-16 bg-transparent font-mono text-sm focus:outline-none transition-colors ${
                                 isOverLength
                                   ? 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/10'
                                   : 'text-gray-700 dark:text-[#D4D4D4] focus:bg-yellow-50 dark:focus:bg-[#2a2a00]/40'
                               }`}
                               value={val}
                               onChange={(e) => updateValue(f.seq, e.target.value)}
-                              placeholder={`最多 ${f.length} 字元`}
+                              placeholder={`${f.length} bytes`}
                               spellCheck={false}
-                              maxLength={f.length * 2} // allow some overshoot to show error
                             />
                             <span className={`absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-mono ${
-                              isOverLength ? 'text-red-500' : 'text-gray-300 dark:text-gray-600'
+                              isOverLength ? 'text-red-500 font-bold' : 'text-gray-300 dark:text-gray-600'
                             }`}>
-                              {val.length}/{f.length}
+                              {byteLen}/{f.length}B
                             </span>
                           </div>
                         </td>
