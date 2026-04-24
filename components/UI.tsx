@@ -279,15 +279,33 @@ export const OutputBox: React.FC<OutputBoxProps> = ({ title, content, placeholde
         }
       };
 
-      // Most robust approach for older/restricted browsers: intercept 'copy' event
+      // Most robust approach for older/restricted browsers or file:// protocol: intercept 'copy' event
       const copyWithExecCommand = (): boolean => {
         let success = false;
+
+        // execCommand('copy') ONLY fires the 'copy' event if there's an active text selection!
+        // We create a dummy span, select it, execute copy, and intercept it.
+        const dummy = document.createElement('span');
+        dummy.textContent = ' ';
+        dummy.style.position = 'absolute';
+        dummy.style.opacity = '0';
+        document.body.appendChild(dummy);
+
+        const selection = window.getSelection();
+        const originalRange = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+        
+        const range = document.createRange();
+        range.selectNodeContents(dummy);
+        selection?.removeAllRanges();
+        selection?.addRange(range);
+
         const listener = (e: ClipboardEvent) => {
           e.clipboardData?.setData('text/html', htmlContent);
           e.clipboardData?.setData('text/plain', plainText);
           e.preventDefault();
           success = true;
         };
+        
         document.addEventListener('copy', listener);
         try {
           document.execCommand('copy');
@@ -295,6 +313,14 @@ export const OutputBox: React.FC<OutputBoxProps> = ({ title, content, placeholde
           console.warn('execCommand failed', e);
         }
         document.removeEventListener('copy', listener);
+
+        // Cleanup
+        selection?.removeAllRanges();
+        if (originalRange) {
+          selection?.addRange(originalRange);
+        }
+        document.body.removeChild(dummy);
+
         return success;
       };
 
@@ -302,7 +328,13 @@ export const OutputBox: React.FC<OutputBoxProps> = ({ title, content, placeholde
       copyWithClipboardApi().then((success) => {
         if (!success) {
           if (!copyWithExecCommand()) {
-             navigator.clipboard.writeText(plainText);
+             // Ultimate fallback: write raw text
+             const fallbackInput = document.createElement('textarea');
+             fallbackInput.value = plainText;
+             document.body.appendChild(fallbackInput);
+             fallbackInput.select();
+             document.execCommand('copy');
+             document.body.removeChild(fallbackInput);
           }
         }
         setCopied(true);
