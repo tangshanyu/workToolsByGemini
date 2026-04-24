@@ -769,7 +769,7 @@ const FixedWidthProcessor: React.FC = () => {
                   <div className="font-mono text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-[#141414] p-3 rounded-lg border border-gray-100 dark:border-[#333] whitespace-pre overflow-x-auto max-h-[200px] overflow-y-auto">
                     {tabs.map((t, idx) => (
                       <div key={t.id} className={t.id === activeTabId ? 'text-blue-600 dark:text-blue-400 font-bold' : ''}>
-                        {generateLine(fields, t.values)}
+                        {generateLine(fields, t.values, encoding)}
                       </div>
                     ))}
                   </div>
