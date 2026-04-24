@@ -258,21 +258,57 @@ export const OutputBox: React.FC<OutputBoxProps> = ({ title, content, placeholde
       });
 
       // Wrap in a pre-formatted container with monospace font for proper indentation in Word
-      const htmlContent = `<pre style="font-family:'Courier New',monospace;font-size:11pt;line-height:1.5;white-space:pre-wrap;word-break:break-all;">${temp.innerHTML}</pre>`;
+      const htmlContent = `<div style="font-family:'Courier New',monospace;font-size:11pt;line-height:1.5;white-space:pre-wrap;word-break:break-all;">${temp.innerHTML}</div>`;
       const plainText = temp.textContent || temp.innerText || "";
 
-      // Copy both rich HTML and plain text to clipboard
-      const htmlBlob = new Blob([htmlContent], { type: 'text/html' });
-      const textBlob = new Blob([plainText], { type: 'text/plain' });
-      navigator.clipboard.write([
-        new ClipboardItem({
-          'text/html': htmlBlob,
-          'text/plain': textBlob,
-        })
-      ]).then(() => {
+      // Fallback approach using Clipboard API if supported
+      const copyWithClipboardApi = async () => {
+        try {
+          const htmlBlob = new Blob([htmlContent], { type: 'text/html' });
+          const textBlob = new Blob([plainText], { type: 'text/plain' });
+          await navigator.clipboard.write([
+            new ClipboardItem({
+              'text/html': htmlBlob,
+              'text/plain': textBlob,
+            })
+          ]);
+          return true;
+        } catch (err) {
+          console.warn('Clipboard API failed', err);
+          return false;
+        }
+      };
+
+      // Most robust approach for older/restricted browsers: intercept 'copy' event
+      const copyWithExecCommand = (): boolean => {
+        let success = false;
+        const listener = (e: ClipboardEvent) => {
+          e.clipboardData?.setData('text/html', htmlContent);
+          e.clipboardData?.setData('text/plain', plainText);
+          e.preventDefault();
+          success = true;
+        };
+        document.addEventListener('copy', listener);
+        try {
+          document.execCommand('copy');
+        } catch (e) {
+          console.warn('execCommand failed', e);
+        }
+        document.removeEventListener('copy', listener);
+        return success;
+      };
+
+      // Try Clipboard API first, fallback to execCommand intercept, then writeText
+      copyWithClipboardApi().then((success) => {
+        if (!success) {
+          if (!copyWithExecCommand()) {
+             navigator.clipboard.writeText(plainText);
+          }
+        }
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
       });
+
     } else {
       navigator.clipboard.writeText(localContent).then(() => {
         setCopied(true);
