@@ -10,6 +10,7 @@ import DiffViewer from './pages/DiffViewer';
 import JsonFormatter from './pages/JsonFormatter';
 import DomainConverter from './pages/DomainConverter';
 import CsvEditor from './pages/CsvEditor';
+import FixedWidthProcessor from './pages/FixedWidthProcessor';
 
 const App: React.FC = () => {
   return (
@@ -25,6 +26,7 @@ const App: React.FC = () => {
           <Route path="/json-format" element={<JsonFormatter />} />
           <Route path="/domain-convert" element={<DomainConverter />} />
           <Route path="/csv-editor" element={<CsvEditor />} />
+          <Route path="/fixed-width" element={<FixedWidthProcessor />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Layout>

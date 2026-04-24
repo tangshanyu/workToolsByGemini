@@ -62,6 +62,13 @@ export const TOOLS: NavItem[] = [
     categoryId: 'data-fmt',
     desc: "匯入 CSV 檔案或貼上文字，以表格方式編輯後匯出下載。"
   },
+  {
+    path: '/fixed-width',
+    label: '定長文字處理',
+    icon: '📏',
+    categoryId: 'data-fmt',
+    desc: "匯入格式定義後，以表格填入資料並匯出為定長 TXT 檔案。"
+  },
 
   // --- General Utilities ---
   {
