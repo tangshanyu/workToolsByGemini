@@ -6,6 +6,7 @@ interface FieldDef {
   seq: number;
   engName: string;
   name: string;
+  type: string;       // 數字 / 文字
   start: number;
   end: number;
   length: number;
@@ -19,76 +20,148 @@ interface DataTab {
 }
 
 // --- Pattern Parser ---
+// Supports multiple formats from Word table paste:
+//   Format A: 序號 \t [空] \t 欄位名稱 \t 型態 \t 長度 \t 起-迄 \t 說明
+//   Format B: 序號 \t 英文名稱 \t 欄位名稱 \t 起 \t 迄 \t 說明
+//   Multi-line descriptions: lines not starting with a number are appended to previous field
 function parsePattern(text: string): FieldDef[] {
-  const lines = text.split('\n').map(l => l.replace(/\r$/, '')).filter(l => l.trim());
-  if (lines.length < 2) return [];
+  const rawLines = text.split('\n').map(l => l.replace(/\r$/, ''));
+  if (rawLines.length < 2) return [];
 
   const results: FieldDef[] = [];
 
-  // Skip header line (first line with column titles)
-  for (let i = 1; i < lines.length; i++) {
-    const cols = lines[i].split('\t').map(c => c.trim());
-    // Filter out completely empty columns
-    const nonEmpty = cols.filter(c => c !== '');
-    if (nonEmpty.length < 4) continue; // Need at least: seq, name, start, end
+  // Detect & skip header line: first line that contains known header keywords
+  let startIdx = 0;
+  const headerKeywords = ['序號', '欄位', '起', '迄', '長度', '說明'];
+  if (headerKeywords.some(kw => rawLines[0].includes(kw))) {
+    startIdx = 1;
+  }
 
-    // Strategy: find numeric values to identify seq, start, end
-    // Pattern: first number = seq, then names, then start (number), end (number), rest = description
-    const numbers: { idx: number; val: number }[] = [];
-    cols.forEach((c, idx) => {
-      const n = parseInt(c, 10);
-      if (!isNaN(n) && c === String(n)) {
-        numbers.push({ idx, val: n });
+  for (let i = startIdx; i < rawLines.length; i++) {
+    const line = rawLines[i];
+    if (!line.trim()) continue;
+
+    const cols = line.split('\t');
+    const firstCol = cols[0]?.trim();
+
+    // Check if this line starts a new field (first column is a number)
+    const seqNum = parseInt(firstCol, 10);
+    if (!isNaN(seqNum) && firstCol === String(seqNum)) {
+      // --- This is a new field definition line ---
+      const nonEmptyCols = cols.map(c => c.trim()).filter(c => c !== '');
+
+      // Try to find "起-迄" pattern (e.g., "1-7", "10-19", "100-102")
+      let start = 0, end = 0, foundRange = false;
+      let rangeColIdx = -1;
+      for (let c = 0; c < cols.length; c++) {
+        const rangeMatch = cols[c].trim().match(/^(\d+)\s*[-–]\s*(\d+)$/);
+        if (rangeMatch) {
+          start = parseInt(rangeMatch[1], 10);
+          end = parseInt(rangeMatch[2], 10);
+          foundRange = true;
+          rangeColIdx = c;
+          break;
+        }
       }
-    });
 
-    if (numbers.length < 3) continue; // Need seq, start, end at minimum
+      // If no combined range found, try separate start/end columns
+      if (!foundRange) {
+        const numbers: { idx: number; val: number }[] = [];
+        cols.forEach((c, idx) => {
+          const n = parseInt(c.trim(), 10);
+          if (idx > 0 && !isNaN(n) && c.trim() === String(n)) {
+            numbers.push({ idx, val: n });
+          }
+        });
+        if (numbers.length >= 2) {
+          start = numbers[numbers.length - 2].val;
+          end = numbers[numbers.length - 1].val;
+          foundRange = true;
+          rangeColIdx = numbers[numbers.length - 2].idx;
+        }
+      }
 
-    const seq = numbers[0].val;
-    const startPos = numbers[numbers.length - 2].val;
-    const endPos = numbers[numbers.length - 1].val;
+      if (!foundRange) continue; // Can't parse this line
 
-    // Everything between seq and start/end numbers = names
-    const seqIdx = numbers[0].idx;
-    const startIdx = numbers[numbers.length - 2].idx;
-    const endIdx = numbers[numbers.length - 1].idx;
+      // Extract type (數字/文字/etc.) - look for known type keywords
+      let fieldType = '';
+      let typeColIdx = -1;
+      for (let c = 1; c < cols.length; c++) {
+        const val = cols[c].trim();
+        if (['數字', '文字', '數值', '英數', '日期', '文數'].includes(val)) {
+          fieldType = val;
+          typeColIdx = c;
+          break;
+        }
+      }
 
-    // Collect name parts between seq and start position columns
-    const nameParts: string[] = [];
-    for (let j = seqIdx + 1; j < startIdx; j++) {
-      if (cols[j].trim()) nameParts.push(cols[j].trim());
-    }
+      // Extract length - standalone number that's not seq, start, or end
+      let fieldLength = 0;
+      let lengthColIdx = -1;
+      for (let c = 1; c < cols.length; c++) {
+        if (c === rangeColIdx || c === typeColIdx) continue;
+        const val = cols[c].trim();
+        const n = parseInt(val, 10);
+        if (!isNaN(n) && val === String(n) && n !== seqNum && n !== start && n !== end) {
+          fieldLength = n;
+          lengthColIdx = c;
+          break;
+        }
+      }
 
-    let engName = '';
-    let cnName = '';
-    if (nameParts.length >= 2) {
-      engName = nameParts[0];
-      cnName = nameParts[1];
-    } else if (nameParts.length === 1) {
-      // Check if it looks English
-      const part = nameParts[0];
-      if (/^[A-Za-z0-9_-]+$/.test(part)) {
-        engName = part;
-      } else {
-        cnName = part;
+      // If no explicit length found, calculate from range
+      if (fieldLength === 0 && start > 0 && end > 0) {
+        fieldLength = end - start + 1;
+      }
+
+      // Extract names: non-empty, non-numeric, non-type columns between seq and range
+      const nameParts: string[] = [];
+      const skipIdxs = new Set([0, rangeColIdx, typeColIdx, lengthColIdx]);
+      for (let c = 1; c < (rangeColIdx > 0 ? rangeColIdx : cols.length); c++) {
+        if (skipIdxs.has(c)) continue;
+        const val = cols[c].trim();
+        if (val && !/^\d+$/.test(val)) {
+          nameParts.push(val);
+        }
+      }
+
+      let engName = '';
+      let cnName = '';
+      if (nameParts.length >= 2) {
+        engName = nameParts[0];
+        cnName = nameParts[1];
+      } else if (nameParts.length === 1) {
+        const part = nameParts[0];
+        if (/^[A-Za-z0-9_\-()]+$/.test(part)) {
+          engName = part;
+        } else {
+          cnName = part;
+        }
+      }
+
+      // Description: everything after the range column
+      const descParts: string[] = [];
+      const descStartIdx = Math.max(rangeColIdx, typeColIdx, lengthColIdx) + 1;
+      for (let c = descStartIdx; c < cols.length; c++) {
+        if (cols[c].trim()) descParts.push(cols[c].trim());
+      }
+
+      results.push({
+        seq: seqNum,
+        engName,
+        name: cnName,
+        type: fieldType,
+        start,
+        end,
+        length: fieldLength,
+        description: descParts.join(' '),
+      });
+    } else {
+      // --- Continuation line (multi-line description) ---
+      if (results.length > 0 && line.trim()) {
+        results[results.length - 1].description += '\n' + line.trim();
       }
     }
-
-    // Description: everything after endIdx
-    const descParts: string[] = [];
-    for (let j = endIdx + 1; j < cols.length; j++) {
-      if (cols[j].trim()) descParts.push(cols[j].trim());
-    }
-
-    results.push({
-      seq,
-      engName,
-      name: cnName,
-      start: startPos,
-      end: endPos,
-      length: endPos - startPos + 1,
-      description: descParts.join(' '),
-    });
   }
 
   return results;
@@ -444,6 +517,7 @@ const FixedWidthProcessor: React.FC = () => {
                     <th className="p-2 text-xs text-gray-400 dark:text-gray-500 font-mono text-center border-r border-gray-200 dark:border-[#333] w-12">序號</th>
                     <th className="p-2 text-xs text-gray-600 dark:text-gray-300 font-semibold text-left border-r border-gray-200 dark:border-[#333] min-w-[120px]">英文名稱</th>
                     <th className="p-2 text-xs text-gray-600 dark:text-gray-300 font-semibold text-left border-r border-gray-200 dark:border-[#333] min-w-[100px]">欄位名稱</th>
+                    <th className="p-2 text-xs text-gray-600 dark:text-gray-300 font-semibold text-center border-r border-gray-200 dark:border-[#333] w-14">型態</th>
                     <th className="p-2 text-xs text-gray-400 dark:text-gray-500 font-mono text-center border-r border-gray-200 dark:border-[#333] w-12">起</th>
                     <th className="p-2 text-xs text-gray-400 dark:text-gray-500 font-mono text-center border-r border-gray-200 dark:border-[#333] w-12">迄</th>
                     <th className="p-2 text-xs text-gray-400 dark:text-gray-500 font-mono text-center border-r border-gray-200 dark:border-[#333] w-12">長度</th>
@@ -466,6 +540,15 @@ const FixedWidthProcessor: React.FC = () => {
                         <td className="p-2 text-gray-700 dark:text-gray-300 text-sm border-r border-gray-100 dark:border-[#333]">
                           {f.name}
                         </td>
+                        <td className="p-2 text-center text-xs border-r border-gray-100 dark:border-[#333]">
+                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                            f.type === '數字' || f.type === '數值'
+                              ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-300'
+                              : 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300'
+                          }`}>
+                            {f.type || '-'}
+                          </span>
+                        </td>
                         <td className="p-2 text-center text-gray-400 dark:text-gray-500 text-xs font-mono border-r border-gray-100 dark:border-[#333]">
                           {f.start}
                         </td>
@@ -475,7 +558,7 @@ const FixedWidthProcessor: React.FC = () => {
                         <td className="p-2 text-center text-gray-400 dark:text-gray-500 text-xs font-mono border-r border-gray-100 dark:border-[#333]">
                           {f.length}
                         </td>
-                        <td className="p-2 text-gray-500 dark:text-gray-400 text-xs border-r border-gray-100 dark:border-[#333]">
+                        <td className="p-2 text-gray-500 dark:text-gray-400 text-xs border-r border-gray-100 dark:border-[#333] whitespace-pre-line" title={f.description}>
                           {f.description}
                         </td>
                         <td className="p-0">
