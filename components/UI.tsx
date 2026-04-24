@@ -235,7 +235,7 @@ export const OutputBox: React.FC<OutputBoxProps> = ({ title, content, placeholde
         const htmlEl = el as HTMLElement;
         const cls = htmlEl.getAttribute('class') || '';
         
-        let inlineStyle = 'background:none;border:none;text-decoration:none;';
+        let inlineStyle = 'background-color:transparent;border:none;text-decoration:none;';
         if (cls.includes('SQLKeyword')) inlineStyle += 'color:#0000FF;font-weight:bold;';
         else if (cls.includes('SQLComment')) {
           inlineStyle += 'color:#008000;';
@@ -266,8 +266,11 @@ export const OutputBox: React.FC<OutputBoxProps> = ({ title, content, placeholde
       copyContainer.style.width = '1px';
       copyContainer.style.height = '1px';
       copyContainer.style.overflow = 'hidden';
+      // Force white background & black text so Chrome doesn't inherit dark mode styles
+      copyContainer.style.backgroundColor = 'white';
+      copyContainer.style.color = 'black';
 
-      copyContainer.innerHTML = `<div style="font-family:'Courier New',monospace;font-size:11pt;line-height:1.5;white-space:pre;background:none;border:none;padding:0;margin:0;">${temp.innerHTML}</div>`;
+      copyContainer.innerHTML = `<div style="font-family:'Courier New',monospace;font-size:11pt;line-height:1.5;white-space:pre;background-color:white;color:black;border:none;padding:0;margin:0;">${temp.innerHTML}</div>`;
       document.body.appendChild(copyContainer);
 
       const selection = window.getSelection();
