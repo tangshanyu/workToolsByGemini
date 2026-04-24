@@ -235,7 +235,7 @@ export const OutputBox: React.FC<OutputBoxProps> = ({ title, content, placeholde
         const htmlEl = el as HTMLElement;
         const cls = htmlEl.getAttribute('class') || '';
         
-        let inlineStyle = 'background:none;border:none;';
+        let inlineStyle = 'background:none;border:none;text-decoration:none;';
         if (cls.includes('SQLKeyword')) inlineStyle += 'color:#0000FF;font-weight:bold;';
         else if (cls.includes('SQLComment')) {
           inlineStyle += 'color:#008000;';
