@@ -264,6 +264,7 @@ export const OutputBox: React.FC<OutputBoxProps> = ({ title, content, placeholde
       // Fallback approach using Clipboard API if supported
       const copyWithClipboardApi = async () => {
         try {
+          if (!navigator.clipboard || !navigator.clipboard.write || !window.ClipboardItem) return false;
           const htmlBlob = new Blob([htmlContent], { type: 'text/html' });
           const textBlob = new Blob([plainText], { type: 'text/plain' });
           await navigator.clipboard.write([
@@ -283,8 +284,6 @@ export const OutputBox: React.FC<OutputBoxProps> = ({ title, content, placeholde
       const copyWithExecCommand = (): boolean => {
         let success = false;
 
-        // execCommand('copy') ONLY fires the 'copy' event if there's an active text selection!
-        // We create a dummy span, select it, execute copy, and intercept it.
         const dummy = document.createElement('span');
         dummy.textContent = ' ';
         dummy.style.position = 'absolute';
@@ -314,7 +313,6 @@ export const OutputBox: React.FC<OutputBoxProps> = ({ title, content, placeholde
         }
         document.removeEventListener('copy', listener);
 
-        // Cleanup
         selection?.removeAllRanges();
         if (originalRange) {
           selection?.addRange(originalRange);
@@ -324,7 +322,6 @@ export const OutputBox: React.FC<OutputBoxProps> = ({ title, content, placeholde
         return success;
       };
 
-      // Try Clipboard API first, fallback to execCommand intercept, then writeText
       copyWithClipboardApi().then((success) => {
         if (!success) {
           if (!copyWithExecCommand()) {
@@ -342,7 +339,85 @@ export const OutputBox: React.FC<OutputBoxProps> = ({ title, content, placeholde
       });
 
     } else {
-      navigator.clipboard.writeText(localContent).then(() => {
+      // --- NON-HTML COPY (Forces Courier New font for Word) ---
+      // Even if it's plain text, we construct an HTML payload so Word uses Courier New. 
+      // Escape HTML entities to prevent accidental rendering issues:
+      const escapeHtml = (unsafe: string) => unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+
+      const plainText = localContent;
+      const htmlContent = `<div style="font-family:'Courier New',monospace;font-size:11pt;line-height:1.5;white-space:pre-wrap;word-break:break-all;">${escapeHtml(plainText)}</div>`;
+
+      const copyWithClipboardApi = async () => {
+        try {
+          if (!navigator.clipboard || !navigator.clipboard.write || !window.ClipboardItem) return false;
+          const htmlBlob = new Blob([htmlContent], { type: 'text/html' });
+          const textBlob = new Blob([plainText], { type: 'text/plain' });
+          await navigator.clipboard.write([
+            new ClipboardItem({
+              'text/html': htmlBlob,
+              'text/plain': textBlob,
+            })
+          ]);
+          return true;
+        } catch (err) {
+          return false;
+        }
+      };
+
+      const copyWithExecCommand = (): boolean => {
+        let success = false;
+        const dummy = document.createElement('span');
+        dummy.textContent = ' ';
+        dummy.style.position = 'absolute';
+        dummy.style.opacity = '0';
+        document.body.appendChild(dummy);
+
+        const selection = window.getSelection();
+        const originalRange = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+        
+        const range = document.createRange();
+        range.selectNodeContents(dummy);
+        selection?.removeAllRanges();
+        selection?.addRange(range);
+
+        const listener = (e: ClipboardEvent) => {
+          e.clipboardData?.setData('text/html', htmlContent);
+          e.clipboardData?.setData('text/plain', plainText);
+          e.preventDefault();
+          success = true;
+        };
+        
+        document.addEventListener('copy', listener);
+        try { document.execCommand('copy'); } catch (e) {}
+        document.removeEventListener('copy', listener);
+
+        selection?.removeAllRanges();
+        if (originalRange) selection?.addRange(originalRange);
+        document.body.removeChild(dummy);
+
+        return success;
+      };
+
+      copyWithClipboardApi().then((success) => {
+        if (!success) {
+          if (!copyWithExecCommand()) {
+             // Ultimate raw text fallback
+             const fallbackInput = document.createElement('textarea');
+             fallbackInput.value = plainText;
+             fallbackInput.style.position = 'fixed';
+             fallbackInput.style.top = '0';
+             fallbackInput.style.opacity = '0';
+             document.body.appendChild(fallbackInput);
+             fallbackInput.select();
+             try { document.execCommand('copy'); } catch(e) {}
+             document.body.removeChild(fallbackInput);
+          }
+        }
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
       });
