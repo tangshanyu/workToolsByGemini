@@ -226,106 +226,80 @@ export const OutputBox: React.FC<OutputBoxProps> = ({ title, content, placeholde
     if (!localContent) return;
 
     if (isHtml) {
-      // Convert CSS class-based coloring to inline styles for Word/rich-text paste
       const cjkRegex = /[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff]/;
       const temp = document.createElement('div');
       temp.innerHTML = localContent;
 
-      // Force inline explicit styles, removing EVERY class so Chrome DOM copy 
-      // doesn't inject computed css background colors causing grey boxes in MS Word.
+      // Replace CSS classes with inline styles, and strip ALL classes & backgrounds
       temp.querySelectorAll('*').forEach(el => {
         const htmlEl = el as HTMLElement;
         const cls = htmlEl.getAttribute('class') || '';
         
-        let inlineStyle = '';
-        if (cls.includes('SQLKeyword')) inlineStyle = 'color:#0000FF;font-weight:bold;';
+        let inlineStyle = 'background:none;border:none;';
+        if (cls.includes('SQLKeyword')) inlineStyle += 'color:#0000FF;font-weight:bold;';
         else if (cls.includes('SQLComment')) {
-          inlineStyle = 'color:#008000;';
+          inlineStyle += 'color:#008000;';
           if (cjkRegex.test(htmlEl.textContent || '')) {
-            inlineStyle += "font-family:'標楷體','DFKai-SB',serif;";
+            inlineStyle += "font-family:'標楷體','DFKai-SB',serif;font-style:normal;";
           }
         }
-        else if (cls.includes('SQLString')) inlineStyle = 'color:#FF0000;';
-        else if (cls.includes('SQLOperator')) inlineStyle = 'color:#808080;';
-        else if (cls.includes('SQLFunction')) inlineStyle = 'color:#FF00FF;';
-        else if (cls.includes('SQLErrorHighlight')) inlineStyle = 'background-color:#FFC0C0;';
+        else if (cls.includes('SQLString')) inlineStyle += 'color:#FF0000;';
+        else if (cls.includes('SQLOperator')) inlineStyle += 'color:#808080;';
+        else if (cls.includes('SQLFunction')) inlineStyle += 'color:#FF00FF;';
+        else if (cls.includes('SQLErrorHighlight')) inlineStyle += 'background-color:#FFC0C0;';
 
         htmlEl.removeAttribute('class');
-        if (inlineStyle) {
-          htmlEl.setAttribute('style', inlineStyle);
-        }
+        htmlEl.setAttribute('style', inlineStyle);
       });
 
-      // Avoid <pre> tag because MS Word applies an "HTML Preformatted" style that often has borders/shading.
-      // Instead, we manually convert newlines and indentation.
-      let pristineHtml = temp.innerHTML;
-      pristineHtml = pristineHtml.replace(/\n/g, '<br>');
-      pristineHtml = pristineHtml.replace(/  /g, '&nbsp;&nbsp;');
+      // Use DOM Selection + execCommand('copy') — the ONLY method that reliably
+      // copies rich text with inline styles into MS Word on modern Chrome.
+      //
+      // Key: use <div style="white-space:pre"> instead of <pre> tag.
+      // Word's <pre> triggers "HTML Preformatted" paragraph style (grey background + border).
+      // A <div> with white-space:pre preserves indentation without triggering that style.
+      const copyContainer = document.createElement('div');
+      copyContainer.style.position = 'fixed';
+      copyContainer.style.left = '-9999px';
+      copyContainer.style.top = '-9999px';
+      // MUST be visible (not opacity:0, not display:none) for Chrome to compute styles
+      copyContainer.style.width = '1px';
+      copyContainer.style.height = '1px';
+      copyContainer.style.overflow = 'hidden';
 
-      // Wrap in a pristine, unstyled div (except for font)
-      const htmlContent = `<div style="font-family:'Courier New',monospace;font-size:11pt;line-height:1.5;background:transparent;color:black;">${pristineHtml}</div>`;
-      const plainText = temp.textContent || temp.innerText || "";
+      copyContainer.innerHTML = `<div style="font-family:'Courier New',monospace;font-size:11pt;line-height:1.5;white-space:pre;background:none;border:none;padding:0;margin:0;">${temp.innerHTML}</div>`;
+      document.body.appendChild(copyContainer);
 
-      // 100% reliable MS Word string copy using intercept.
-      // Prevents Chrome from exporting computed background colors of invisible divs!
-      const copyWithEventOverride = () => {
-        let success = false;
-        const dummy = document.createElement('span');
-        dummy.textContent = ' ';
-        dummy.style.position = 'absolute';
-        dummy.style.opacity = '0';
-        document.body.appendChild(dummy);
+      const selection = window.getSelection();
+      const originalRange = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+      
+      selection?.removeAllRanges();
+      const range = document.createRange();
+      range.selectNodeContents(copyContainer);
+      selection?.addRange(range);
 
-        const selection = window.getSelection();
-        const originalRange = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
-        
-        const range = document.createRange();
-        range.selectNodeContents(dummy);
-        selection?.removeAllRanges();
-        selection?.addRange(range);
+      let success = false;
+      try {
+        success = document.execCommand('copy');
+      } catch (e) {
+        console.warn('DOM execCommand failed', e);
+      }
 
-        const listener = (e: ClipboardEvent) => {
-          e.clipboardData?.setData('text/html', htmlContent);
-          e.clipboardData?.setData('text/plain', plainText);
-          e.preventDefault();
-          success = true;
-        };
-        
-        document.addEventListener('copy', listener);
-        try { success = document.execCommand('copy'); } catch(e) {}
-        document.removeEventListener('copy', listener);
+      selection?.removeAllRanges();
+      if (originalRange) selection?.addRange(originalRange);
+      document.body.removeChild(copyContainer);
 
-        selection?.removeAllRanges();
-        if (originalRange) selection?.addRange(originalRange);
-        document.body.removeChild(dummy);
-
-        return success;
-      };
-
-      const copyWithClipboardApi = async () => {
-        try {
-          if (!navigator.clipboard || !navigator.clipboard.write || !window.ClipboardItem) return false;
-          const htmlBlob = new Blob([htmlContent], { type: 'text/html' });
-          const textBlob = new Blob([plainText], { type: 'text/plain' });
-          await navigator.clipboard.write([
-            new ClipboardItem({ 'text/html': htmlBlob, 'text/plain': textBlob })
-          ]);
-          return true;
-        } catch (err) {
-          return false;
-        }
-      };
-
-      copyWithClipboardApi().then((success) => {
-        if (!success) {
-          if (!copyWithEventOverride()) {
-            // ultimate fallback
-            navigator.clipboard.writeText(plainText).catch(()=>{});
-          }
-        }
+      if (success) {
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
-      });
+      } else {
+        // Fallback: plain text
+        const plainText = temp.textContent || temp.innerText || "";
+        navigator.clipboard.writeText(plainText).then(() => {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+        }).catch(() => {});
+      }
     } else {
       // --- NON-HTML COPY (Forces Courier New font for Word) ---
       // Even if it's plain text, we construct an HTML payload so Word uses Courier New. 
