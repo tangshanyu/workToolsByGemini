@@ -261,83 +261,62 @@ export const OutputBox: React.FC<OutputBoxProps> = ({ title, content, placeholde
       const htmlContent = `<div style="font-family:'Courier New',monospace;font-size:11pt;line-height:1.5;white-space:pre-wrap;word-break:break-all;">${temp.innerHTML}</div>`;
       const plainText = temp.textContent || temp.innerText || "";
 
-      // Fallback approach using Clipboard API if supported
-      const copyWithClipboardApi = async () => {
-        try {
-          if (!navigator.clipboard || !navigator.clipboard.write || !window.ClipboardItem) return false;
-          const htmlBlob = new Blob([htmlContent], { type: 'text/html' });
-          const textBlob = new Blob([plainText], { type: 'text/plain' });
-          await navigator.clipboard.write([
-            new ClipboardItem({
-              'text/html': htmlBlob,
-              'text/plain': textBlob,
-            })
-          ]);
-          return true;
-        } catch (err) {
-          console.warn('Clipboard API failed', err);
-          return false;
-        }
-      };
-
-      // Most robust approach for older/restricted browsers or file:// protocol: intercept 'copy' event
-      const copyWithExecCommand = (): boolean => {
+      // We use DOM selection + native execCommand('copy').
+      // This forces the browser to natively compute the styles and generate the complex
+      // MS Word CF_HTML clipboard headers automatically.
+      const copyWithDOMSelection = () => {
         let success = false;
+        const copyContainer = document.createElement('div');
+        
+        // Critical: MUST NOT use opacity:0 or display:none, otherwise Chrome strips styles or ignores it.
+        // We throw it far off-screen instead.
+        copyContainer.style.position = 'fixed';
+        copyContainer.style.left = '-9999px';
+        copyContainer.style.top = '-9999px';
+        copyContainer.style.width = '10px';
+        copyContainer.style.height = '10px';
+        copyContainer.style.overflow = 'hidden';
 
-        const dummy = document.createElement('span');
-        dummy.textContent = ' ';
-        dummy.style.position = 'absolute';
-        dummy.style.opacity = '0';
-        document.body.appendChild(dummy);
+        // Wrap in <pre> to preserve whitespace natively, and apply Courier New.
+        copyContainer.innerHTML = `<pre style="font-family:'Courier New',monospace;font-size:11pt;line-height:1.5;">${temp.innerHTML}</pre>`;
+        document.body.appendChild(copyContainer);
 
         const selection = window.getSelection();
         const originalRange = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
         
-        const range = document.createRange();
-        range.selectNodeContents(dummy);
         selection?.removeAllRanges();
+        const range = document.createRange();
+        range.selectNodeContents(copyContainer);
         selection?.addRange(range);
 
-        const listener = (e: ClipboardEvent) => {
-          e.clipboardData?.setData('text/html', htmlContent);
-          e.clipboardData?.setData('text/plain', plainText);
-          e.preventDefault();
-          success = true;
-        };
-        
-        document.addEventListener('copy', listener);
         try {
-          document.execCommand('copy');
+          success = document.execCommand('copy');
         } catch (e) {
-          console.warn('execCommand failed', e);
+          console.warn('DOM execCommand failed', e);
         }
-        document.removeEventListener('copy', listener);
 
         selection?.removeAllRanges();
         if (originalRange) {
           selection?.addRange(originalRange);
         }
-        document.body.removeChild(dummy);
+        document.body.removeChild(copyContainer);
 
         return success;
       };
 
-      copyWithClipboardApi().then((success) => {
-        if (!success) {
-          if (!copyWithExecCommand()) {
-             // Ultimate fallback: write raw text
-             const fallbackInput = document.createElement('textarea');
-             fallbackInput.value = plainText;
-             document.body.appendChild(fallbackInput);
-             fallbackInput.select();
-             document.execCommand('copy');
-             document.body.removeChild(fallbackInput);
-          }
-        }
+      // Try DOM copy first (most reliable for rich text into MS Word)
+      let copied = copyWithDOMSelection();
+      
+      // Fallback to Clipboard API if raw DOM copy somehow fails
+      if (!copied && navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(plainText).then(() => {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+        }).catch(() => {});
+      } else if (copied) {
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
-      });
-
+      }
     } else {
       // --- NON-HTML COPY (Forces Courier New font for Word) ---
       // Even if it's plain text, we construct an HTML payload so Word uses Courier New. 
