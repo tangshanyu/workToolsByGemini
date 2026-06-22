@@ -924,17 +924,17 @@ const FixedWidthProcessor: React.FC = () => {
                   共 {totalLength} 字元
                 </span>
               </div>
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto bg-gray-50 dark:bg-[#141414] p-3 rounded-lg border border-gray-100 dark:border-[#333]">
                 {/* Ruler */}
-                <div className="font-mono text-[10px] text-gray-300 dark:text-gray-600 leading-tight select-none whitespace-pre">
+                <div className="font-mono text-sm text-gray-400 dark:text-gray-600 leading-tight select-none whitespace-pre min-w-max">
                   {generateRulerNumbers(totalLength)}
                 </div>
-                <div className="font-mono text-[10px] text-gray-300 dark:text-gray-600 leading-tight select-none whitespace-pre mb-1">
+                <div className="font-mono text-sm text-gray-400 dark:text-gray-600 leading-tight select-none whitespace-pre mb-2 min-w-max">
                   {generateRuler(totalLength)}
                 </div>
                 {/* Output */}
-                <div className="font-mono text-sm text-gray-800 dark:text-[#D4D4D4] bg-gray-50 dark:bg-[#141414] p-3 rounded-lg border border-gray-100 dark:border-[#333] whitespace-pre overflow-x-auto">
-                  {currentLine || <span className="text-gray-300 dark:text-gray-600 italic">（尚無資料）</span>}
+                <div className="font-mono text-sm text-gray-800 dark:text-[#D4D4D4] whitespace-pre min-w-max">
+                  {currentLine || <span className="text-gray-400 dark:text-gray-600 italic">（尚無資料）</span>}
                 </div>
               </div>
             </div>
@@ -944,15 +944,20 @@ const FixedWidthProcessor: React.FC = () => {
           {fields.length > 0 && tabs.length > 0 && (
             <div className="p-5 bg-white dark:bg-[#1E1E1E] border border-gray-200 dark:border-[#333] rounded-xl shadow-sm">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                  📊 表格總覽
-                </h3>
-                <span className="text-xs text-gray-400 dark:text-gray-500">
-                  {tabs.length} 筆資料 × {fields.length} 欄位
-                </span>
+                <div className="flex items-center gap-3">
+                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    📊 表格總覽
+                  </h3>
+                  <span className="text-xs text-gray-400 dark:text-gray-500">
+                    {tabs.length} 筆資料 × {fields.length} 欄位
+                  </span>
+                </div>
+                <Button onClick={addTab} variant="secondary" className="py-1 px-3 text-xs h-7">
+                  ➕ 新增一筆
+                </Button>
               </div>
               <div className="overflow-auto rounded-lg border border-gray-200 dark:border-[#333]">
-                <table className="min-w-full text-sm border-collapse">
+                <table className="min-w-max text-sm border-collapse">
                   {/* --- Header: Field Names --- */}
                   <thead className="sticky top-0 z-10">
                     <tr className="bg-gradient-to-b from-gray-100 to-gray-50 dark:from-[#2a2a2a] dark:to-[#252526] border-b border-gray-200 dark:border-[#333]">
