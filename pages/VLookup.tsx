@@ -14,6 +14,16 @@ function generateTsv(data: string[][]): string {
   return data.map(row => row.join('\t')).join('\n');
 }
 
+function getColumnLabel(index: number): string {
+  let label = '';
+  let i = index;
+  while (i >= 0) {
+    label = String.fromCharCode((i % 26) + 65) + label;
+    i = Math.floor(i / 26) - 1;
+  }
+  return label;
+}
+
 interface LookupCondition {
   targetIdx: number;
   sourceIdx: number;
@@ -25,6 +35,8 @@ const VLookup: React.FC = () => {
   const [sourceInput, setSourceInput] = useState('');
 
   // Configuration State
+  const [targetHasHeader, setTargetHasHeader] = useState(true);
+  const [sourceHasHeader, setSourceHasHeader] = useState(true);
   const [conditions, setConditions] = useState<LookupCondition[]>([{ targetIdx: 0, sourceIdx: 0 }]);
   const [selectedSourceCols, setSelectedSourceCols] = useState<number[]>([]);
   const [copied, setCopied] = useState(false);
@@ -33,8 +45,17 @@ const VLookup: React.FC = () => {
   const targetData = useMemo(() => parseTsv(targetInput), [targetInput]);
   const sourceData = useMemo(() => parseTsv(sourceInput), [sourceInput]);
 
-  const targetHeaders = targetData.length > 0 ? targetData[0] : [];
-  const sourceHeaders = sourceData.length > 0 ? sourceData[0] : [];
+  const targetHeaders = useMemo(() => {
+    if (targetData.length === 0) return [];
+    if (targetHasHeader) return targetData[0];
+    return targetData[0].map((_, i) => getColumnLabel(i));
+  }, [targetData, targetHasHeader]);
+
+  const sourceHeaders = useMemo(() => {
+    if (sourceData.length === 0) return [];
+    if (sourceHasHeader) return sourceData[0];
+    return sourceData[0].map((_, i) => getColumnLabel(i));
+  }, [sourceData, sourceHasHeader]);
 
   // Reset conditions when headers change significantly
   React.useEffect(() => {
@@ -87,11 +108,12 @@ const VLookup: React.FC = () => {
   // Process VLookup
   const resultData = useMemo(() => {
     if (targetData.length === 0) return [];
-    if (sourceData.length < 2 || selectedSourceCols.length === 0 || conditions.length === 0) return targetData;
+    if (sourceData.length === 0 || selectedSourceCols.length === 0 || conditions.length === 0) return targetData;
 
-    // Build HashMap for source data (skip header)
+    // Build HashMap for source data
     const sourceMap = new Map<string, string[]>();
-    for (let i = 1; i < sourceData.length; i++) {
+    const sourceStartIdx = sourceHasHeader ? 1 : 0;
+    for (let i = sourceStartIdx; i < sourceData.length; i++) {
       const row = sourceData[i];
       // Generate composite key
       const key = conditions.map(c => row[c.sourceIdx] || '').join('|');
@@ -111,7 +133,8 @@ const VLookup: React.FC = () => {
     results.push(newHeader);
 
     // Process Data Rows
-    for (let i = 1; i < targetData.length; i++) {
+    const targetStartIdx = targetHasHeader ? 1 : 0;
+    for (let i = targetStartIdx; i < targetData.length; i++) {
       const row = [...targetData[i]];
       // Generate composite key
       const key = conditions.map(c => row[c.targetIdx] || '').join('|');
@@ -128,7 +151,7 @@ const VLookup: React.FC = () => {
     }
 
     return results;
-  }, [targetData, sourceData, conditions, selectedSourceCols]);
+  }, [targetData, sourceData, conditions, selectedSourceCols, targetHasHeader, sourceHasHeader, targetHeaders, sourceHeaders]);
 
   const handleCopy = () => {
     const tsv = generateTsv(resultData);
@@ -167,13 +190,19 @@ const VLookup: React.FC = () => {
               <span className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 w-6 h-6 rounded-full flex items-center justify-center text-xs">1</span>
               目標表格 (Target)
             </h3>
-            <span className="text-xs text-gray-400 dark:text-gray-500">
-              {targetData.length > 0 ? `共 ${targetData.length - 1} 筆` : '尚未貼上資料'}
-            </span>
+            <div className="flex items-center gap-4">
+              <label className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                <input type="checkbox" className="rounded border-gray-300 dark:border-[#555] text-blue-600 focus:ring-blue-500 bg-white dark:bg-[#141414]" checked={targetHasHeader} onChange={(e) => setTargetHasHeader(e.target.checked)} />
+                第一列為表頭
+              </label>
+              <span className="text-xs text-gray-400 dark:text-gray-500">
+                {targetData.length > 0 ? `共 ${targetData.length - (targetHasHeader ? 1 : 0)} 筆` : '尚未貼上資料'}
+              </span>
+            </div>
           </div>
           <textarea
             className="w-full h-32 p-3 bg-gray-50 dark:bg-[#141414] border border-gray-200 dark:border-[#333] rounded-lg text-sm font-mono text-gray-800 dark:text-[#D4D4D4] focus:outline-none focus:border-blue-400 dark:focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-0 resize-none whitespace-pre"
-            placeholder="請從 Excel 或 Word 複製並貼上您的主表（預設第一列為表頭）..."
+            placeholder="請從 Excel 或 Word 複製並貼上您的主表..."
             value={targetInput}
             onChange={(e) => setTargetInput(e.target.value)}
             spellCheck={false}
@@ -187,13 +216,19 @@ const VLookup: React.FC = () => {
               <span className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 w-6 h-6 rounded-full flex items-center justify-center text-xs">2</span>
               來源表格 (Source)
             </h3>
-            <span className="text-xs text-gray-400 dark:text-gray-500">
-              {sourceData.length > 0 ? `共 ${sourceData.length - 1} 筆` : '尚未貼上資料'}
-            </span>
+            <div className="flex items-center gap-4">
+              <label className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400 cursor-pointer hover:text-green-600 dark:hover:text-green-400 transition-colors">
+                <input type="checkbox" className="rounded border-gray-300 dark:border-[#555] text-green-600 focus:ring-green-500 bg-white dark:bg-[#141414]" checked={sourceHasHeader} onChange={(e) => setSourceHasHeader(e.target.checked)} />
+                第一列為表頭
+              </label>
+              <span className="text-xs text-gray-400 dark:text-gray-500">
+                {sourceData.length > 0 ? `共 ${sourceData.length - (sourceHasHeader ? 1 : 0)} 筆` : '尚未貼上資料'}
+              </span>
+            </div>
           </div>
           <textarea
             className="w-full h-32 p-3 bg-gray-50 dark:bg-[#141414] border border-gray-200 dark:border-[#333] rounded-lg text-sm font-mono text-gray-800 dark:text-[#D4D4D4] focus:outline-none focus:border-green-400 dark:focus:border-green-500 focus:ring-2 focus:ring-green-100 dark:focus:ring-0 resize-none whitespace-pre"
-            placeholder="請從 Excel 或 Word 複製並貼上您的參考表（預設第一列為表頭）..."
+            placeholder="請從 Excel 或 Word 複製並貼上您的參考表..."
             value={sourceInput}
             onChange={(e) => setSourceInput(e.target.value)}
             spellCheck={false}
