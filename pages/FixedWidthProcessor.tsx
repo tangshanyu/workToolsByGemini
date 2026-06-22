@@ -60,9 +60,35 @@ function parsePattern(text: string): FieldDef[] {
 
   const dataStartIdx = headerLineIdx >= 0 ? headerLineIdx + 1 : 0;
 
+  // --- Step 2: Detect column offset between header and data rows ---
+  // Word tables with merged cells often produce data rows with extra empty columns
+  let colOffset = 0;
+  if (headerLineIdx >= 0 && Object.keys(colMap).length > 0) {
+    const headerColCount = rawLines[headerLineIdx].split('\t').length;
+    // Scan first few data rows to find one that starts with a number
+    for (let i = dataStartIdx; i < Math.min(rawLines.length, dataStartIdx + 5); i++) {
+      const testLine = rawLines[i];
+      if (!testLine?.trim()) continue;
+      const testCols = testLine.split('\t');
+      const firstVal = testCols[0]?.trim();
+      if (!isNaN(parseInt(firstVal, 10)) && firstVal === String(parseInt(firstVal, 10))) {
+        if (testCols.length > headerColCount) {
+          colOffset = testCols.length - headerColCount;
+        }
+        break;
+      }
+    }
+  }
+
+  // Build adjusted colMap (shift non-zero indices by offset)
+  const adjColMap: Record<string, number> = {};
+  for (const [key, idx] of Object.entries(colMap)) {
+    adjColMap[key] = idx === 0 ? 0 : idx + colOffset;
+  }
+
   // Known type values (short codes + Chinese)
   const knownTypes = new Set(['X', '9', 'A', 'N', 'S', 'AN', 'XN',
-    '數字', '文字', '數值', '英數', '日期', '文數']);
+    '數字', '文字', '數值', '英數', '日期', '文數', '文數字']);
 
   for (let i = dataStartIdx; i < rawLines.length; i++) {
     const line = rawLines[i];
@@ -74,7 +100,7 @@ function parsePattern(text: string): FieldDef[] {
     // Check if this line starts a new field (first column is a number)
     const seqNum = parseInt(firstCol, 10);
     if (!isNaN(seqNum) && firstCol === String(seqNum)) {
-      // --- Use column map if available ---
+      // --- Use adjusted column map if available ---
       let fieldName = '';
       let engName = '';
       let fieldType = '';
@@ -82,16 +108,18 @@ function parsePattern(text: string): FieldDef[] {
       let start = 0, end = 0;
       let description = '';
       
+      const useMap = Object.keys(adjColMap).length > 0 ? adjColMap : colMap;
+      
       // Get values by mapped columns
-      if ('name' in colMap) fieldName = (cols[colMap['name']] || '').trim();
-      if ('engName' in colMap) engName = (cols[colMap['engName']] || '').trim();
-      if ('type' in colMap) fieldType = (cols[colMap['type']] || '').trim();
-      if ('length' in colMap) fieldLength = parseInt((cols[colMap['length']] || '').trim(), 10) || 0;
-      if ('desc' in colMap) description = (cols[colMap['desc']] || '').trim();
+      if ('name' in useMap) fieldName = (cols[useMap['name']] || '').trim();
+      if ('engName' in useMap) engName = (cols[useMap['engName']] || '').trim();
+      if ('type' in useMap) fieldType = (cols[useMap['type']] || '').trim();
+      if ('length' in useMap) fieldLength = parseInt((cols[useMap['length']] || '').trim(), 10) || 0;
+      if ('desc' in useMap) description = (cols[useMap['desc']] || '').trim();
       
       // Handle range column (combined "1-7" format)
-      if ('range' in colMap) {
-        const rangeVal = (cols[colMap['range']] || '').trim();
+      if ('range' in useMap) {
+        const rangeVal = (cols[useMap['range']] || '').trim();
         const rangeMatch = rangeVal.match(/^(\d+)\s*[-–]\s*(\d+)$/);
         if (rangeMatch) {
           start = parseInt(rangeMatch[1], 10);
@@ -100,9 +128,21 @@ function parsePattern(text: string): FieldDef[] {
       }
       
       // Handle separate start/end columns
-      if ('start' in colMap && 'end' in colMap) {
-        start = parseInt((cols[colMap['start']] || '').trim(), 10) || 0;
-        end = parseInt((cols[colMap['end']] || '').trim(), 10) || 0;
+      if ('start' in useMap && 'end' in useMap) {
+        start = parseInt((cols[useMap['start']] || '').trim(), 10) || 0;
+        end = parseInt((cols[useMap['end']] || '').trim(), 10) || 0;
+      }
+
+      // --- Per-row validation: if mapped name is empty, try heuristic fallback ---
+      if (!fieldName && !engName && Object.keys(useMap).length > 0) {
+        // Scan for first non-empty, non-numeric text column after seq
+        for (let c = 1; c < cols.length; c++) {
+          const val = cols[c].trim();
+          if (val && !/^\d+$/.test(val) && !knownTypes.has(val) && !/^\d+\s*[-–]\s*\d+$/.test(val)) {
+            fieldName = val;
+            break;
+          }
+        }
       }
 
       // --- Fallback: no header detected, use heuristic scan ---
