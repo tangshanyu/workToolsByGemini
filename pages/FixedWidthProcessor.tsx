@@ -20,24 +20,51 @@ interface DataTab {
 }
 
 // --- Pattern Parser ---
-// Supports multiple formats from Word table paste:
-//   Format A: 序號 \t [空] \t 欄位名稱 \t 型態 \t 長度 \t 起-迄 \t 說明
-//   Format B: 序號 \t 英文名稱 \t 欄位名稱 \t 起 \t 迄 \t 說明
-//   Multi-line descriptions: lines not starting with a number are appended to previous field
+// Dynamically detects column layout by scanning header keywords.
+// Supports any column order and various header naming conventions.
 function parsePattern(text: string): FieldDef[] {
   const rawLines = text.split('\n').map(l => l.replace(/\r$/, ''));
   if (rawLines.length < 2) return [];
 
   const results: FieldDef[] = [];
 
-  // Detect & skip header line: first line that contains known header keywords
-  let startIdx = 0;
-  const headerKeywords = ['序號', '欄位', '起', '迄', '長度', '說明'];
-  if (headerKeywords.some(kw => rawLines[0].includes(kw))) {
-    startIdx = 1;
+  // --- Step 1: Detect header line and map columns by keywords ---
+  const headerKeywords = ['序號', '欄位', '名稱', '起', '迄', '長度', '說明', '型態', '型別', '資料'];
+  let headerLineIdx = -1;
+  for (let i = 0; i < Math.min(rawLines.length, 3); i++) {
+    if (headerKeywords.some(kw => rawLines[i].includes(kw))) {
+      headerLineIdx = i;
+      break;
+    }
   }
 
-  for (let i = startIdx; i < rawLines.length; i++) {
+  // Column role mapping
+  let colMap: Record<string, number> = {};
+  // seq, engName, name, type, length, range, start, end, desc
+  
+  if (headerLineIdx >= 0) {
+    const headerCols = rawLines[headerLineIdx].split('\t').map(c => c.trim());
+    headerCols.forEach((h, idx) => {
+      const lh = h.toLowerCase();
+      if (/序號|seq|no\.?$/i.test(h)) colMap['seq'] = idx;
+      else if (/英文.*名|eng.*name/i.test(h)) colMap['engName'] = idx;
+      else if (/欄位名稱|名稱|field.*name|column.*name/i.test(h) && !('name' in colMap)) colMap['name'] = idx;
+      else if (/資料型態|型態|型別|type|data.*type/i.test(h)) colMap['type'] = idx;
+      else if (/長度|length|len/i.test(h)) colMap['length'] = idx;
+      else if (/起迄|起迄位置|position|range/i.test(h)) colMap['range'] = idx;
+      else if (/^起$|start/i.test(h)) colMap['start'] = idx;
+      else if (/^迄$|end/i.test(h)) colMap['end'] = idx;
+      else if (/說明|備註|desc|remark|note/i.test(h)) colMap['desc'] = idx;
+    });
+  }
+
+  const dataStartIdx = headerLineIdx >= 0 ? headerLineIdx + 1 : 0;
+
+  // Known type values (short codes + Chinese)
+  const knownTypes = new Set(['X', '9', 'A', 'N', 'S', 'AN', 'XN',
+    '數字', '文字', '數值', '英數', '日期', '文數']);
+
+  for (let i = dataStartIdx; i < rawLines.length; i++) {
     const line = rawLines[i];
     if (!line.trim()) continue;
 
@@ -47,114 +74,109 @@ function parsePattern(text: string): FieldDef[] {
     // Check if this line starts a new field (first column is a number)
     const seqNum = parseInt(firstCol, 10);
     if (!isNaN(seqNum) && firstCol === String(seqNum)) {
-      // --- This is a new field definition line ---
-      const nonEmptyCols = cols.map(c => c.trim()).filter(c => c !== '');
-
-      // Try to find "起-迄" pattern (e.g., "1-7", "10-19", "100-102")
-      let start = 0, end = 0, foundRange = false;
-      let rangeColIdx = -1;
-      for (let c = 0; c < cols.length; c++) {
-        const rangeMatch = cols[c].trim().match(/^(\d+)\s*[-–]\s*(\d+)$/);
+      // --- Use column map if available ---
+      let fieldName = '';
+      let engName = '';
+      let fieldType = '';
+      let fieldLength = 0;
+      let start = 0, end = 0;
+      let description = '';
+      
+      // Get values by mapped columns
+      if ('name' in colMap) fieldName = (cols[colMap['name']] || '').trim();
+      if ('engName' in colMap) engName = (cols[colMap['engName']] || '').trim();
+      if ('type' in colMap) fieldType = (cols[colMap['type']] || '').trim();
+      if ('length' in colMap) fieldLength = parseInt((cols[colMap['length']] || '').trim(), 10) || 0;
+      if ('desc' in colMap) description = (cols[colMap['desc']] || '').trim();
+      
+      // Handle range column (combined "1-7" format)
+      if ('range' in colMap) {
+        const rangeVal = (cols[colMap['range']] || '').trim();
+        const rangeMatch = rangeVal.match(/^(\d+)\s*[-–]\s*(\d+)$/);
         if (rangeMatch) {
           start = parseInt(rangeMatch[1], 10);
           end = parseInt(rangeMatch[2], 10);
-          foundRange = true;
-          rangeColIdx = c;
-          break;
         }
       }
+      
+      // Handle separate start/end columns
+      if ('start' in colMap && 'end' in colMap) {
+        start = parseInt((cols[colMap['start']] || '').trim(), 10) || 0;
+        end = parseInt((cols[colMap['end']] || '').trim(), 10) || 0;
+      }
 
-      // If no combined range found, try separate start/end columns
-      if (!foundRange) {
-        const numbers: { idx: number; val: number }[] = [];
-        cols.forEach((c, idx) => {
-          const n = parseInt(c.trim(), 10);
-          if (idx > 0 && !isNaN(n) && c.trim() === String(n)) {
-            numbers.push({ idx, val: n });
+      // --- Fallback: no header detected, use heuristic scan ---
+      if (Object.keys(colMap).length === 0) {
+        // Try to find range pattern
+        for (let c = 0; c < cols.length; c++) {
+          const rangeMatch = cols[c].trim().match(/^(\d+)\s*[-–]\s*(\d+)$/);
+          if (rangeMatch) {
+            start = parseInt(rangeMatch[1], 10);
+            end = parseInt(rangeMatch[2], 10);
+            break;
           }
-        });
-        if (numbers.length >= 2) {
-          start = numbers[numbers.length - 2].val;
-          end = numbers[numbers.length - 1].val;
-          foundRange = true;
-          rangeColIdx = numbers[numbers.length - 2].idx;
+        }
+        // Try separate start/end
+        if (start === 0 && end === 0) {
+          const numbers: { idx: number; val: number }[] = [];
+          cols.forEach((c, idx) => {
+            const n = parseInt(c.trim(), 10);
+            if (idx > 0 && !isNaN(n) && c.trim() === String(n)) {
+              numbers.push({ idx, val: n });
+            }
+          });
+          if (numbers.length >= 2) {
+            start = numbers[numbers.length - 2].val;
+            end = numbers[numbers.length - 1].val;
+          }
+        }
+        // Scan for type
+        for (let c = 1; c < cols.length; c++) {
+          if (knownTypes.has(cols[c].trim())) {
+            fieldType = cols[c].trim();
+            break;
+          }
+        }
+        // Scan for names (non-number, non-type text)
+        const nameParts: string[] = [];
+        for (let c = 1; c < cols.length; c++) {
+          const val = cols[c].trim();
+          if (val && !/^\d+$/.test(val) && !knownTypes.has(val) && !/^\d+\s*[-–]\s*\d+$/.test(val)) {
+            nameParts.push(val);
+          }
+        }
+        if (nameParts.length >= 2) { engName = nameParts[0]; fieldName = nameParts[1]; }
+        else if (nameParts.length === 1) {
+          if (/^[A-Za-z0-9_\-()]+$/.test(nameParts[0])) engName = nameParts[0];
+          else fieldName = nameParts[0];
+        }
+        // Scan for standalone length number
+        for (let c = 1; c < cols.length; c++) {
+          const val = cols[c].trim();
+          const n = parseInt(val, 10);
+          if (!isNaN(n) && val === String(n) && n !== seqNum && n !== start && n !== end) {
+            fieldLength = n;
+            break;
+          }
         }
       }
 
-      if (!foundRange) continue; // Can't parse this line
-
-      // Extract type (數字/文字/etc.) - look for known type keywords
-      let fieldType = '';
-      let typeColIdx = -1;
-      for (let c = 1; c < cols.length; c++) {
-        const val = cols[c].trim();
-        if (['數字', '文字', '數值', '英數', '日期', '文數'].includes(val)) {
-          fieldType = val;
-          typeColIdx = c;
-          break;
-        }
-      }
-
-      // Extract length - standalone number that's not seq, start, or end
-      let fieldLength = 0;
-      let lengthColIdx = -1;
-      for (let c = 1; c < cols.length; c++) {
-        if (c === rangeColIdx || c === typeColIdx) continue;
-        const val = cols[c].trim();
-        const n = parseInt(val, 10);
-        if (!isNaN(n) && val === String(n) && n !== seqNum && n !== start && n !== end) {
-          fieldLength = n;
-          lengthColIdx = c;
-          break;
-        }
-      }
-
-      // If no explicit length found, calculate from range
+      // Calculate length from range if not found
       if (fieldLength === 0 && start > 0 && end > 0) {
         fieldLength = end - start + 1;
       }
 
-      // Extract names: non-empty, non-numeric, non-type columns between seq and range
-      const nameParts: string[] = [];
-      const skipIdxs = new Set([0, rangeColIdx, typeColIdx, lengthColIdx]);
-      for (let c = 1; c < (rangeColIdx > 0 ? rangeColIdx : cols.length); c++) {
-        if (skipIdxs.has(c)) continue;
-        const val = cols[c].trim();
-        if (val && !/^\d+$/.test(val)) {
-          nameParts.push(val);
-        }
-      }
-
-      let engName = '';
-      let cnName = '';
-      if (nameParts.length >= 2) {
-        engName = nameParts[0];
-        cnName = nameParts[1];
-      } else if (nameParts.length === 1) {
-        const part = nameParts[0];
-        if (/^[A-Za-z0-9_\-()]+$/.test(part)) {
-          engName = part;
-        } else {
-          cnName = part;
-        }
-      }
-
-      // Description: everything after the range column
-      const descParts: string[] = [];
-      const descStartIdx = Math.max(rangeColIdx, typeColIdx, lengthColIdx) + 1;
-      for (let c = descStartIdx; c < cols.length; c++) {
-        if (cols[c].trim()) descParts.push(cols[c].trim());
-      }
+      if (start === 0 && end === 0 && fieldLength === 0) continue; // Can't parse
 
       results.push({
         seq: seqNum,
         engName,
-        name: cnName,
+        name: fieldName,
         type: fieldType,
         start,
         end,
         length: fieldLength,
-        description: descParts.join(' '),
+        description,
       });
     } else {
       // --- Continuation line (multi-line description) ---
@@ -343,6 +365,10 @@ function nextTabId(): string {
 // ============================================================
 // Component
 // ============================================================
+const emptyManualField = (): FieldDef => ({
+  seq: 0, engName: '', name: '', type: 'X', start: 0, end: 0, length: 0, description: ''
+});
+
 const FixedWidthProcessor: React.FC = () => {
   const [fields, setFields] = useState<FieldDef[]>([]);
   const [tabs, setTabs] = useState<DataTab[]>([]);
@@ -351,9 +377,60 @@ const FixedWidthProcessor: React.FC = () => {
   const [editingTabId, setEditingTabId] = useState<string | null>(null);
   const [copiedAll, setCopiedAll] = useState(false);
   const [encoding, setEncoding] = useState('Big5');
+  const [manualFields, setManualFields] = useState<FieldDef[]>([{ ...emptyManualField(), seq: 1, start: 1, end: 1, length: 1 }]);
+  const [showManualEditor, setShowManualEditor] = useState(false);
 
   const patternFileRef = useRef<HTMLInputElement>(null);
   const dataFileRef = useRef<HTMLInputElement>(null);
+
+  // ---- Manual Pattern Editor ----
+  const addManualRow = () => {
+    setManualFields(prev => {
+      const lastField = prev[prev.length - 1];
+      const nextStart = lastField ? lastField.end + 1 : 1;
+      return [...prev, { ...emptyManualField(), seq: prev.length + 1, start: nextStart, end: nextStart, length: 1 }];
+    });
+  };
+
+  const removeManualRow = (idx: number) => {
+    setManualFields(prev => {
+      const next = prev.filter((_, i) => i !== idx);
+      return next.map((f, i) => ({ ...f, seq: i + 1 }));
+    });
+  };
+
+  const updateManualField = (idx: number, key: keyof FieldDef, value: string | number) => {
+    setManualFields(prev => {
+      const next = [...prev];
+      const f = { ...next[idx] };
+      (f as any)[key] = value;
+      // Auto-calculate length from start/end
+      if (key === 'start' || key === 'end') {
+        const s = key === 'start' ? Number(value) : f.start;
+        const e = key === 'end' ? Number(value) : f.end;
+        if (s > 0 && e >= s) f.length = e - s + 1;
+      }
+      // Auto-calculate end from start+length
+      if (key === 'length') {
+        const len = Number(value);
+        if (f.start > 0 && len > 0) f.end = f.start + len - 1;
+      }
+      next[idx] = f;
+      return next;
+    });
+  };
+
+  const applyManualPattern = () => {
+    const valid = manualFields.filter(f => f.name.trim() && f.length > 0 && f.start > 0 && f.end > 0);
+    if (valid.length === 0) {
+      alert('請至少填寫一個有效的欄位定義（名稱、長度、起迄）。');
+      return;
+    }
+    setFields(valid);
+    const firstTab: DataTab = { id: nextTabId(), label: '資料 1', values: {} };
+    setTabs([firstTab]);
+    setActiveTabId(firstTab.id);
+  };
 
   // ---- Pattern Import ----
   const importPattern = useCallback((text: string) => {
@@ -548,10 +625,10 @@ const FixedWidthProcessor: React.FC = () => {
 
           {/* Text Import */}
           <div className="p-5 bg-white dark:bg-[#1E1E1E] border border-gray-200 dark:border-[#333] rounded-xl shadow-sm">
-            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">📋 或直接貼上格式定義（Tab 分隔）</h3>
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">📋 或直接貼上格式定義（Tab 分隔，自動辨識欄位名稱）</h3>
             <textarea
               className="w-full p-3 bg-gray-50 dark:bg-[#141414] border border-gray-200 dark:border-[#333] rounded-lg text-sm font-mono text-gray-800 dark:text-[#D4D4D4] placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-blue-400 dark:focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-0 min-h-[160px] resize-none"
-              placeholder={`序號\t欄位英文名稱\t欄位名稱\t起\t迄\t欄位說明\n1\tID-NO\t統編\t1\t14\t\n2\tACCT-NO\t帳號\t15\t30\t右靠左補0`}
+              placeholder={`序號\t欄位名稱\t資料型態\t長度\t起迄位置\n1\t成交日期\tX\t8\t1-8\n2\t保管帳號\tX\t11\t9-19`}
               value={patternInput}
               onChange={(e) => setPatternInput(e.target.value)}
               spellCheck={false}
@@ -567,6 +644,65 @@ const FixedWidthProcessor: React.FC = () => {
                 📥 匯入格式定義
               </Button>
             </div>
+          </div>
+
+          {/* Manual Pattern Editor */}
+          <div className="p-5 bg-white dark:bg-[#1E1E1E] border border-gray-200 dark:border-[#333] rounded-xl shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">✏️ 或手動建立格式定義</h3>
+              <button
+                onClick={() => setShowManualEditor(!showManualEditor)}
+                className="text-xs text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+              >
+                {showManualEditor ? '▲ 收合' : '▼ 展開'}
+              </button>
+            </div>
+
+            {showManualEditor && (
+              <>
+                <div className="overflow-auto rounded-lg border border-gray-200 dark:border-[#333] mb-3">
+                  <table className="min-w-full text-sm border-collapse">
+                    <thead>
+                      <tr className="bg-gray-50 dark:bg-[#252526] border-b border-gray-200 dark:border-[#333]">
+                        <th className="p-2 text-xs text-gray-400 w-10 text-center">#</th>
+                        <th className="p-2 text-xs text-gray-600 dark:text-gray-300 text-left min-w-[120px]">欄位名稱 *</th>
+                        <th className="p-2 text-xs text-gray-600 dark:text-gray-300 text-left min-w-[100px]">英文名稱</th>
+                        <th className="p-2 text-xs text-gray-600 dark:text-gray-300 text-center w-16">型態</th>
+                        <th className="p-2 text-xs text-gray-600 dark:text-gray-300 text-center w-14">起 *</th>
+                        <th className="p-2 text-xs text-gray-600 dark:text-gray-300 text-center w-14">迄 *</th>
+                        <th className="p-2 text-xs text-gray-600 dark:text-gray-300 text-center w-14">長度</th>
+                        <th className="p-2 text-xs text-gray-600 dark:text-gray-300 text-left min-w-[100px]">說明</th>
+                        <th className="p-2 w-8"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 dark:divide-[#333]/50">
+                      {manualFields.map((mf, idx) => (
+                        <tr key={idx} className="group hover:bg-blue-50/30 dark:hover:bg-[#2D2D2D]">
+                          <td className="p-1 text-center text-xs text-gray-400 font-mono">{mf.seq}</td>
+                          <td className="p-0"><input className="w-full p-1.5 bg-transparent text-sm focus:outline-none focus:bg-yellow-50 dark:focus:bg-[#2a2a00]/40 text-gray-700 dark:text-gray-200" value={mf.name} onChange={e => updateManualField(idx, 'name', e.target.value)} placeholder="欄位名稱" /></td>
+                          <td className="p-0"><input className="w-full p-1.5 bg-transparent text-sm font-mono focus:outline-none focus:bg-yellow-50 dark:focus:bg-[#2a2a00]/40 text-gray-600 dark:text-gray-300" value={mf.engName} onChange={e => updateManualField(idx, 'engName', e.target.value)} placeholder="ENG_NAME" /></td>
+                          <td className="p-0"><select className="w-full p-1.5 bg-transparent text-sm text-center focus:outline-none text-gray-600 dark:text-gray-300 cursor-pointer" value={mf.type} onChange={e => updateManualField(idx, 'type', e.target.value)}><option value="X">X (文字)</option><option value="9">9 (數字)</option><option value="A">A (英數)</option><option value="文字">文字</option><option value="數字">數字</option></select></td>
+                          <td className="p-0"><input type="number" className="w-full p-1.5 bg-transparent text-sm text-center font-mono focus:outline-none focus:bg-yellow-50 dark:focus:bg-[#2a2a00]/40 text-gray-600 dark:text-gray-300" value={mf.start || ''} onChange={e => updateManualField(idx, 'start', parseInt(e.target.value) || 0)} /></td>
+                          <td className="p-0"><input type="number" className="w-full p-1.5 bg-transparent text-sm text-center font-mono focus:outline-none focus:bg-yellow-50 dark:focus:bg-[#2a2a00]/40 text-gray-600 dark:text-gray-300" value={mf.end || ''} onChange={e => updateManualField(idx, 'end', parseInt(e.target.value) || 0)} /></td>
+                          <td className="p-1.5 text-center text-xs font-mono text-gray-400">{mf.length > 0 ? mf.length : '-'}</td>
+                          <td className="p-0"><input className="w-full p-1.5 bg-transparent text-sm focus:outline-none focus:bg-yellow-50 dark:focus:bg-[#2a2a00]/40 text-gray-500 dark:text-gray-400" value={mf.description} onChange={e => updateManualField(idx, 'description', e.target.value)} placeholder="說明" /></td>
+                          <td className="p-1 text-center">
+                            <button onClick={() => removeManualRow(idx)} className="w-5 h-5 text-gray-300 hover:text-red-500 dark:hover:text-red-400 rounded text-xs transition-all opacity-0 group-hover:opacity-100">✕</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button onClick={addManualRow} variant="secondary">➕ 新增欄位</Button>
+                  <div className="flex-1" />
+                  <Button onClick={applyManualPattern} variant="primary" disabled={manualFields.every(f => !f.name.trim())}>
+                    ✅ 套用格式定義
+                  </Button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -761,20 +897,121 @@ const FixedWidthProcessor: React.FC = () => {
                   {currentLine || <span className="text-gray-300 dark:text-gray-600 italic">（尚無資料）</span>}
                 </div>
               </div>
+            </div>
+          )}
 
-              {/* All tabs preview */}
-              {tabs.length > 1 && (
-                <div className="mt-4 pt-4 border-t border-gray-100 dark:border-[#333]">
-                  <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">全部資料預覽：</h4>
-                  <div className="font-mono text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-[#141414] p-3 rounded-lg border border-gray-100 dark:border-[#333] whitespace-pre overflow-x-auto max-h-[200px] overflow-y-auto">
-                    {tabs.map((t, idx) => (
-                      <div key={t.id} className={t.id === activeTabId ? 'text-blue-600 dark:text-blue-400 font-bold' : ''}>
-                        {generateLine(fields, t.values, encoding)}
-                      </div>
+          {/* ========== Excel-like Grid View ========== */}
+          {fields.length > 0 && tabs.length > 0 && (
+            <div className="p-5 bg-white dark:bg-[#1E1E1E] border border-gray-200 dark:border-[#333] rounded-xl shadow-sm">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                  📊 表格總覽
+                </h3>
+                <span className="text-xs text-gray-400 dark:text-gray-500">
+                  {tabs.length} 筆資料 × {fields.length} 欄位
+                </span>
+              </div>
+              <div className="overflow-auto rounded-lg border border-gray-200 dark:border-[#333]">
+                <table className="min-w-full text-sm border-collapse">
+                  {/* --- Header: Field Names --- */}
+                  <thead className="sticky top-0 z-10">
+                    <tr className="bg-gradient-to-b from-gray-100 to-gray-50 dark:from-[#2a2a2a] dark:to-[#252526] border-b border-gray-200 dark:border-[#333]">
+                      <th className="p-2 text-xs text-gray-400 dark:text-gray-500 font-mono text-center border-r border-gray-200 dark:border-[#333] w-20 bg-gray-100 dark:bg-[#252526] sticky left-0 z-20">
+                        #
+                      </th>
+                      {fields.map((f) => (
+                        <th
+                          key={f.seq}
+                          className="p-2 text-xs font-semibold text-gray-700 dark:text-gray-200 text-center border-r border-gray-200 dark:border-[#333] min-w-[80px] whitespace-nowrap"
+                          title={f.description || undefined}
+                        >
+                          <div>{f.name || f.engName}</div>
+                          {f.engName && f.name && (
+                            <div className="text-[10px] font-mono text-gray-400 dark:text-gray-500 font-normal mt-0.5">{f.engName}</div>
+                          )}
+                        </th>
+                      ))}
+                    </tr>
+                    {/* --- Sub-header: Position Range --- */}
+                    <tr className="bg-gray-50 dark:bg-[#1E1E1E] border-b border-gray-200 dark:border-[#444]">
+                      <td className="p-1 text-[10px] text-gray-400 dark:text-gray-500 text-center border-r border-gray-200 dark:border-[#333] bg-gray-50 dark:bg-[#1E1E1E] sticky left-0 z-20 font-mono">
+                        位置
+                      </td>
+                      {fields.map((f) => (
+                        <td
+                          key={f.seq}
+                          className="p-1 text-center border-r border-gray-200 dark:border-[#333]"
+                        >
+                          <div className="text-[10px] font-mono text-blue-500 dark:text-blue-400 font-medium">
+                            {f.start}-{f.end}
+                          </div>
+                          <div className="text-[9px] font-mono text-gray-400 dark:text-gray-500">
+                            ({f.length}{f.type ? ` ${f.type}` : ''})
+                          </div>
+                        </td>
+                      ))}
+                    </tr>
+                  </thead>
+                  {/* --- Data Rows --- */}
+                  <tbody className="divide-y divide-gray-100 dark:divide-[#333]/50">
+                    {tabs.map((tab) => (
+                      <tr
+                        key={tab.id}
+                        className={`cursor-pointer transition-colors ${
+                          tab.id === activeTabId
+                            ? 'bg-blue-50/50 dark:bg-blue-900/10'
+                            : 'hover:bg-gray-50 dark:hover:bg-[#2D2D2D]'
+                        }`}
+                        onClick={() => setActiveTabId(tab.id)}
+                      >
+                        {/* Row label (sticky left) */}
+                        <td className={`p-2 text-xs font-medium text-center border-r border-gray-200 dark:border-[#333] sticky left-0 z-10 whitespace-nowrap ${
+                          tab.id === activeTabId
+                            ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                            : 'bg-gray-50 dark:bg-[#1A1A1A] text-gray-500 dark:text-gray-400'
+                        }`}>
+                          {tab.label}
+                        </td>
+                        {/* Field values */}
+                        {fields.map((f) => {
+                          const val = tab.values[f.seq] || '';
+                          const byteLen = getByteLength(val, encoding);
+                          const isOver = byteLen > f.length;
+                          return (
+                            <td
+                              key={f.seq}
+                              className={`p-0 border-r border-gray-100 dark:border-[#333]/50 ${
+                                isOver ? 'bg-red-50/50 dark:bg-red-900/5' : ''
+                              }`}
+                            >
+                              <input
+                                className={`w-full p-1.5 bg-transparent font-mono text-xs focus:outline-none transition-colors text-center ${
+                                  isOver
+                                    ? 'text-red-600 dark:text-red-400'
+                                    : tab.id === activeTabId
+                                      ? 'text-gray-800 dark:text-gray-200'
+                                      : 'text-gray-600 dark:text-gray-400'
+                                } focus:bg-yellow-50 dark:focus:bg-[#2a2a00]/40`}
+                                value={val}
+                                onChange={(e) => {
+                                  setActiveTabId(tab.id);
+                                  setTabs(prev => prev.map(t =>
+                                    t.id === tab.id
+                                      ? { ...t, values: { ...t.values, [f.seq]: e.target.value } }
+                                      : t
+                                  ));
+                                }}
+                                spellCheck={false}
+                                title={val ? `${byteLen}/${f.length}B` : `${f.name} (${f.start}-${f.end})`}
+                              />
+                            </td>
+                          );
+                        })}
+                      </tr>
                     ))}
-                  </div>
-                </div>
-              )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </>
