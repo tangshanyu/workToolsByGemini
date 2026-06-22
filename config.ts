@@ -70,6 +70,13 @@ export const TOOLS: NavItem[] = [
     desc: "匯入格式定義後，以表格填入資料並匯出為定長 TXT 檔案。"
   },
 
+  {
+    path: '/vlookup',
+    label: 'VLookup 查詢合併',
+    icon: '🔍',
+    categoryId: 'data-fmt',
+    desc: "貼上目標與來源表格，選擇比對欄位，快速帶入需要的資料，支援多條件比對。"
+  },
   // --- General Utilities ---
   {
     path: '/diff-viewer',
