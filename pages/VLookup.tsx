@@ -378,11 +378,20 @@ const VLookup: React.FC = () => {
                     </td>
                     {row.map((cell, cellIdx) => {
                       const isNewCol = cellIdx >= targetHeaders.length;
+                      const isEmpty = cell.trim() === '';
+                      
+                      let bgClass = '';
+                      if (isEmpty) {
+                        bgClass = 'bg-red-50 dark:bg-red-900/20'; // Highlight missing data
+                      } else if (isNewCol) {
+                        bgClass = 'bg-purple-50/30 dark:bg-purple-900/5';
+                      }
+
                       return (
                         <td
                           key={cellIdx}
-                          className={`p-2 px-3 text-gray-600 dark:text-gray-400 border-r border-gray-100 dark:border-[#333]/50 whitespace-nowrap ${
-                            isNewCol ? 'bg-purple-50/30 dark:bg-purple-900/5' : ''
+                          className={`p-2 px-3 border-r border-gray-100 dark:border-[#333]/50 whitespace-nowrap ${bgClass} ${
+                            isEmpty ? 'text-red-400 dark:text-red-500/70 italic' : 'text-gray-600 dark:text-gray-400'
                           }`}
                         >
                           {cell}
