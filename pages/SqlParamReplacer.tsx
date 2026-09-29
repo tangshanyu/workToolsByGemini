@@ -1,123 +1,28 @@
-import React, { useState } from 'react';
-import { TextArea, Button, Input, OutputBox, PageHeader } from '../components/UI';
-import { formatSqlText, formatSqlHtml } from '../utils/sqlFormatConfig';
-
-const SqlParamReplacer: React.FC = () => {
-  const [sql, setSql] = useState('');
-  const [params, setParams] = useState<string[]>([]);
-  const [paramValues, setParamValues] = useState<Record<string, string>>({});
-  const [output, setOutput] = useState('');
-  const [outputHtml, setOutputHtml] = useState('');
-
-  const extractParams = () => {
-    // Match 'Parm1', 'Parm2', '%Parm1%', 'Parm1%', '%Parm1'
-    const matches = sql.match(/'%?Parm\d+%?'/g);
-    if (!matches) {
-      setParams([]);
-      alert("未找到 'ParmX' 或 '%ParmX%' 格式的參數");
-      return;
-    }
-
-    // Extract core param names
-    const uniqueKeys = new Set<string>();
-    matches.forEach(match => {
-      const coreName = match.replace(/'/g, '').replace(/^%/, '').replace(/%$/, '');
-      uniqueKeys.add(coreName);
-    });
-
-    const sortedParams = Array.from(uniqueKeys).sort();
-    setParams(sortedParams);
-
-    // Initialize values map
-    const newValues: Record<string, string> = {};
-    sortedParams.forEach((p: string) => {
-      newValues[p] = paramValues[p] || '';
-    });
-    setParamValues(newValues);
+import { useState } from 'react';
+import { Replace, SlidersHorizontal } from 'lucide-react';
+import { Button, Input, OutputBox, PageHeader, TextArea } from '../components/UI';
+import { SqlFeedback, SqlStatus } from '../components/SqlFeedback';
+import { SqlSettings } from '../components/SqlSettings';
+import { useSqlFormatter } from '../hooks/useSqlFormatter';
+import { findNamedParams, replaceNamedParams } from '../utils/sqlTransforms';
+export default function SqlParamReplacer() {
+  const [input, setInput] = useState(''); const [params, setParams] = useState<string[]>([]);
+  const [values, setValues] = useState<Record<string, string>>({}); const [settingsOpen, setSettingsOpen] = useState(false);
+  const [scanSource, setScanSource] = useState(''); const formatter = useSqlFormatter();
+  const scan = () => {
+    const found = findNamedParams(input); setParams(found); setScanSource(input);
+    setValues(previous => Object.fromEntries(found.map(key => [key, previous[key] ?? ''])));
+    formatter.setError(found.length ? '' : "未找到 'Parm1' 或 '%Parm1%' 格式的參數。註解內的內容會略過。");
   };
-
-  const handleParamValueChange = (param: string, value: string) => {
-    setParamValues(prev => ({ ...prev, [param]: value }));
-  };
-
-  const executeReplace = () => {
-    let result = sql;
-
-    if (params.length === 0) {
-      alert("請先掃描參數");
-      return;
-    }
-
-    params.forEach(key => {
-      const val = paramValues[key];
-      if (val !== undefined && val !== '') {
-        const escapedValue = val.replace(/'/g, "''");
-        const regex = new RegExp(`'((?:%)?)${key}((?:%)?)'`, 'g');
-        result = result.replace(regex, `'$1${escapedValue}$2'`);
-      }
-    });
-
-    try {
-      const rawSql = result;
-      result = formatSqlText(rawSql);
-      const html = formatSqlHtml(rawSql);
-      setOutputHtml(html);
-    } catch (e) {
-      console.warn("Formatting failed, using raw output");
-      setOutputHtml('');
-    }
-
-    setOutput(result);
-  };
-
-  return (
-    <div className="space-y-6">
-      <PageHeader
-        title="SQL 參數替換"
-        icon="🔧"
-        description={
-          <span>
-            輸入包含 <code>'Parm1'</code>, <code>'%Parm2%'</code> (模糊搜尋) 等參數的 SQL 語句，點擊「🔍 掃描參數」，填入值後執行替換。
-          </span>
-        }
-      />
-
-      <TextArea
-        label="📝 輸入 SQL："
-        placeholder="SELECT * FROM Table WHERE ID = 'Parm1' AND Name LIKE '%Parm2%'..."
-        value={sql}
-        onChange={(e) => setSql(e.target.value)}
-      />
-
-      <Button onClick={extractParams} className="w-full md:w-auto">🔍 掃描參數</Button>
-
-      {params.length > 0 && (
-        <div className="p-5 rounded-xl bg-white/40 backdrop-blur-xl border border-white/50 shadow-xl dark:bg-[#1E1E1E] dark:backdrop-blur-none dark:border-[#333] dark:shadow-none">
-          <h3 className="font-bold mb-4 text-sm text-gray-700 dark:text-gray-300 uppercase tracking-wider flex items-center gap-2">
-            ⚙️ 參數輸入
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {params.map(param => (
-              <div key={param} className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-gray-500 dark:text-gray-400 font-mono ml-1">{param}</label>
-                <Input
-                  value={paramValues[param]}
-                  onChange={(e) => handleParamValueChange(param, e.target.value)}
-                  placeholder={`輸入 ${param} 的值`}
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <Button onClick={executeReplace} variant="primary" disabled={params.length === 0} className="w-full md:w-auto">
-        🚀 執行替換
-      </Button>
-
-      <OutputBox title="✨ 最終 SQL" content={outputHtml || output} isHtml={!!outputHtml} />
-    </div>
-  );
-};
-
-export default SqlParamReplacer;
+  return <div>
+    <PageHeader title="SQL 參數替換" icon={<Replace size={27} />} description={<>掃描 'Parm1'、'%Parm2%'，填入值後替換並用 PoorSQL 整理。空字串也可以作為參數。</>} controls={<Button variant="ghost" disabled={formatter.busy} onClick={() => { setInput("SELECT * FROM CUSTOMERS\nWHERE CUSTOMER_ID = 'Parm1' AND CUSTOMER_NAME LIKE '%Parm2%'\n-- 'Parm3' 不會被替換"); setParams([]); formatter.clear(); }}>載入範例</Button>} />
+    <div className="format-control-bar"><SqlStatus status={formatter.status} busy={formatter.busy} /><Button variant="secondary" aria-expanded={settingsOpen} onClick={() => setSettingsOpen(!settingsOpen)}><SlidersHorizontal size={16} />格式設定</Button></div>
+    {settingsOpen && <SqlSettings options={formatter.options} onChange={formatter.setOptions} />}
+    <TextArea label="原始 SQL" value={input} onChange={event => setInput(event.target.value)} placeholder="SELECT * FROM CUSTOMERS WHERE ID = 'Parm1'" />
+    <div className="format-action-row"><Button variant="secondary" onClick={scan} disabled={!input.trim() || formatter.busy}><Replace size={16} />掃描參數</Button><span className="muted text-xs">略過註解；保留 LIKE 的 %</span></div>
+    {params.length > 0 && <section className="parameter-card"><h2>參數值 · {params.length} 個</h2><div className="parameter-grid">{params.map(key => <Input key={key} label={key} value={values[key] ?? ''} onChange={event => setValues(previous => ({ ...previous, [key]: event.target.value }))} placeholder="可留空，也可輸入特殊字元" />)}</div></section>}
+    <SqlFeedback error={formatter.error || (params.length && input !== scanSource ? 'SQL 已變更，請重新掃描參數。' : '')} warning={formatter.result?.errorFound} />
+    <div className="format-action-row"><Button disabled={!params.length || input !== scanSource || formatter.busy} onClick={() => formatter.run(replaceNamedParams(input, values))}>替換並格式化</Button>{formatter.busy && <Button variant="secondary" onClick={formatter.cancel}>取消</Button>}</div>
+    <OutputBox title="替換後 SQL" content={formatter.result?.html || formatter.result?.text || ''} plainText={formatter.result?.text || ''} isHtml={!!formatter.result?.html} onTextChange={formatter.editResult} />
+  </div>;
+}

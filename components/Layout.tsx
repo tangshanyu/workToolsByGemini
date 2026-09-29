@@ -1,216 +1,73 @@
-import React, { useState, useEffect } from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { CATEGORIES, TOOLS, getCategoryByToolPath, getToolByPath } from '../config';
+import { useEffect, useState } from 'react';
+import { Link, NavLink, useLocation } from 'react-router-dom';
+import { Braces, ChevronLeft, ChevronRight, CircleHelp, Menu, Palette, ShieldCheck, X } from 'lucide-react';
+import { CATEGORIES, TOOLS, getToolByPath } from '../config';
+import { DEFAULT_THEME, applyThemePreference, isThemePreference } from '../utils/theme';
+import { readPreference, writePreference } from '../utils/preferences';
+import Appearance from './Appearance';
+import { ToolIcon } from './Icons';
 
-const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isDark, setIsDark] = useState(() => {
-    if (typeof window !== 'undefined' && window.matchMedia) {
-      return window.matchMedia('(prefers-color-scheme: dark)').matches;
-    }
-    return true;
-  });
-
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true); // Desktop toggle
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); // Mobile toggle
-
+const SQL_LINKS = [
+  { path: '/sql-format', label: 'SQL 格式化' }, { path: '/sql-to-java', label: 'SQL 轉 Java' },
+  { path: '/param-replace', label: '參數替換' }, { path: '/question-mark', label: '問號轉換' },
+];
+export default function Layout({ children }: { children: React.ReactNode }) {
+  const [preference, setPreference] = useState(() => readPreference('sql-toolkit.theme', DEFAULT_THEME, isThemePreference));
+  const [appearanceOpen, setAppearanceOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => matchMedia('(max-width: 767px)').matches);
   const location = useLocation();
-  const navigate = useNavigate();
-
-  // Close mobile menu on route change
-  useEffect(() => {
-    setIsMobileMenuOpen(false);
-  }, [location.pathname]);
-
-  useEffect(() => {
-    const html = document.documentElement;
-    if (isDark) {
-      html.classList.add('dark');
-    } else {
-      html.classList.remove('dark');
-    }
-  }, [isDark]);
-
-  const toggleTheme = () => setIsDark(!isDark);
-
-  // --- Breadcrumbs Logic ---
+  const sqlWorkspace = SQL_LINKS.some(link => link.path === location.pathname);
   const currentTool = getToolByPath(location.pathname);
-  const currentCategory = currentTool ? getCategoryByToolPath(location.pathname) : null;
-
-  return (
-    <div className="min-h-screen relative overflow-hidden transition-colors duration-300 font-sans text-gray-800 dark:text-gray-100 bg-[#F8F9FA] dark:bg-[#141414]">
-
-      {/* --- Header --- */}
-      {/* Light: Solid white | Dark: Solid #0e0e0f with border */}
-      <header className="fixed top-0 left-0 right-0 h-16 z-[60] px-4 flex items-center justify-between
-        bg-white border-b border-gray-200 
-        dark:bg-[#141414] dark:border-[#333]
-        transition-all duration-300 shadow-sm dark:shadow-none">
-
-        <div className="flex items-center gap-4">
-          {/* Mobile Hamburger */}
-          <button
-            className="md:hidden p-2 -ml-2 text-gray-600 dark:text-gray-400 hover:bg-black/5 dark:hover:bg-white/10 rounded-lg transition-colors"
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          >
-            ☰
-          </button>
-
-          {/* Logo */}
-          <div
-            onClick={() => navigate('/')}
-            className="flex items-center gap-3 cursor-pointer mr-8 select-none group"
-          >
-            <div className={`
-                    w-8 h-8 rounded-lg flex items-center justify-center font-bold shrink-0 transition-all duration-300
-                    bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg
-                    dark:from-blue-600 dark:to-blue-700 dark:shadow-none
-                    group-hover:scale-110
-                `}>
-              SQL
-            </div>
-            <div className="font-bold text-lg tracking-tight whitespace-nowrap hidden sm:block bg-clip-text text-transparent bg-gradient-to-r from-gray-800 to-gray-600 dark:text-gray-200 dark:bg-none">
-              Dev Toolkit
-            </div>
-          </div>
-
-          {/* Breadcrumbs */}
-          <nav className="hidden md:flex items-center text-sm text-gray-500 dark:text-gray-400">
-            <span
-              className="hover:text-blue-600 dark:hover:text-gray-200 cursor-pointer transition-colors font-medium"
-              onClick={() => navigate('/')}
-            >
-              首頁
-            </span>
-            {currentCategory && (
-              <div className="hidden lg:flex items-center">
-                <span className="mx-2 text-gray-300 dark:text-gray-600">/</span>
-                <span>{currentCategory.label}</span>
-              </div>
-            )}
-            {currentTool && (
-              <>
-                <span className="mx-2 text-gray-300 dark:text-gray-600">/</span>
-                <span className="font-medium text-gray-800 dark:text-gray-200 flex items-center gap-2">
-                  {currentTool.icon} {currentTool.label}
-                </span>
-              </>
-            )}
-          </nav>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <button
-            onClick={toggleTheme}
-            className={`
-                w-9 h-9 rounded-full flex items-center justify-center transition-all duration-300
-                bg-gray-100 hover:bg-gray-200 text-gray-600
-                dark:bg-[#1E1E1E] dark:hover:bg-[#2D2D2D] dark:text-yellow-400 dark:border dark:border-[#333]
-              `}
-            title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
-          >
-            {isDark ? '🌙' : '☀️'}
-          </button>
-        </div>
-      </header>
-
-      {/* Mobile Overlay */}
-      {isMobileMenuOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 md:hidden"
-          onClick={() => setIsMobileMenuOpen(false)}
-        />
-      )}
-
-      {/* --- Sidebar --- */}
-      {/* Light: Solid white | Dark: Solid #0e0e0f with border */}
-      <aside
-        className={`
-          fixed top-16 bottom-0 left-0 z-50
-          bg-white border-r border-gray-200
-          dark:bg-[#141414] dark:border-[#333]
-          transition-all duration-300 ease-in-out flex flex-col group
-          ${isSidebarOpen ? 'w-64' : 'w-20'}
-          ${isMobileMenuOpen ? 'translate-x-0 w-64 shadow-2xl' : '-translate-x-full md:translate-x-0'}
-        `}
-      >
-        {/* Floating Border Toggle Button (Desktop Only) */}
-        <button
-          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          className={`
-            absolute -right-3 top-6 z-50 hidden md:flex
-            w-6 h-6 items-center justify-center
-            bg-white border border-gray-200 
-            dark:bg-[#1E1E1E] dark:border-[#333] dark:text-gray-400
-            rounded-full shadow-md 
-            text-gray-500 hover:text-blue-600 dark:hover:text-white
-            hover:scale-110 transition-all duration-200
-            cursor-pointer
-          `}
-        >
-          <svg
-            className={`w-3 h-3 transition-transform duration-300 ${!isSidebarOpen ? 'rotate-180' : ''}`}
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-        </button>
-
-        {/* Navigation Items */}
-        <nav className="flex-1 overflow-y-auto py-6 space-y-6 scrollbar-thin px-3">
-          {CATEGORIES.map(category => {
-            const categoryTools = TOOLS.filter(t => t.categoryId === category.id);
-            if (categoryTools.length === 0) return null;
-
-            return (
-              <div key={category.id}>
-                {(isSidebarOpen || isMobileMenuOpen) && (
-                  <h3 className="px-3 mb-2 text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest animate-fade-in pl-4">
-                    {category.label.replace(/^[^\s]+\s/, '')}
-                  </h3>
-                )}
-                <div className="space-y-1">
-                  {categoryTools.map(tool => (
-                    <NavLink
-                      key={tool.path}
-                      to={tool.path}
-                      title={!isSidebarOpen && !isMobileMenuOpen ? tool.label : ''}
-                      className={({ isActive }) =>
-                        `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
-                         ${!isSidebarOpen && !isMobileMenuOpen ? 'justify-center' : ''}
-                         ${isActive
-                          ? 'bg-blue-50 text-blue-600 shadow-sm dark:bg-[#202124] dark:text-blue-400'
-                          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-[#1E1E1E] dark:hover:text-gray-200'
-                        }`
-                      }
-                    >
-                      <span className={`text-lg shrink-0 transition-transform duration-300 ${isSidebarOpen ? '' : 'scale-110'}`}>{tool.icon}</span>
-                      <span className={`whitespace-nowrap transition-all duration-200 ${(isSidebarOpen || isMobileMenuOpen) ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-2 w-0 hidden'}`}>
-                        {tool.label}
-                      </span>
-                    </NavLink>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </nav>
-      </aside>
-
-      {/* --- Main Content Wrapper --- */}
-      <main
-        className={`
-          flex-1 pt-20 min-h-screen transition-all duration-300 ease-in-out relative z-10
-          ${isSidebarOpen ? 'md:ml-64' : 'md:ml-20'}
-        `}
-      >
-        <div className="max-w-6xl mx-auto p-4 md:p-6 lg:p-8 animate-fade-in-up">
-          {children}
-        </div>
-      </main>
-    </div>
-  );
-};
-
-export default Layout;
+  useEffect(() => { setMobileOpen(false); }, [location.pathname]);
+  useEffect(() => {
+    const media = matchMedia('(max-width: 767px)');
+    const update = () => setIsMobile(media.matches);
+    media.addEventListener('change', update); return () => media.removeEventListener('change', update);
+  }, []);
+  useEffect(() => {
+    applyThemePreference(preference); writePreference('sql-toolkit.theme', preference);
+    const media = matchMedia('(prefers-color-scheme: dark)');
+    const update = () => applyThemePreference(preference);
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, [preference]);
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const close = (event: KeyboardEvent) => { if (event.key === 'Escape') setMobileOpen(false); };
+    document.addEventListener('keydown', close); return () => document.removeEventListener('keydown', close);
+  }, [mobileOpen]);
+  return <div className={`app-shell ${collapsed ? 'nav-collapsed' : ''}`}>
+    <a href="#workspace" className="skip-link" onClick={event => { event.preventDefault(); document.getElementById('workspace')?.focus(); }}>跳到工作區</a>
+    <header className="app-header">
+      <div className="header-start"><button className="icon-button mobile-menu" aria-label={mobileOpen ? '關閉選單' : '開啟選單'} aria-expanded={mobileOpen} aria-controls="tool-navigation" onClick={() => setMobileOpen(!mobileOpen)}>{mobileOpen ? <X size={22} /> : <Menu size={22} />}</button>
+        <Link to="/sql-format" className="brand"><span className="brand-symbol"><Braces size={25} /></span><span>SQL <strong>Dev Toolkit</strong></span></Link>
+      </div>
+      <div className="header-context"><span className="context-dot" />{sqlWorkspace ? 'PoorSQL 工作空間' : '開發工具箱'}</div>
+      <button className="appearance-trigger" onClick={() => setAppearanceOpen(true)} aria-label="外觀與主題色"><span className="appearance-color" style={{ backgroundColor: preference.seed }} /><Palette size={18} /><span>外觀</span></button>
+    </header>
+    {mobileOpen && <button className="nav-scrim" aria-label="關閉導覽選單" onClick={() => setMobileOpen(false)} />}
+    <aside id="tool-navigation" inert={isMobile && !mobileOpen} className={`app-sidebar ${mobileOpen ? 'mobile-open' : ''}`}>
+      <div className="sidebar-label"><span>工作空間</span><button className="icon-button collapse-navigation" aria-label={collapsed ? '展開導覽' : '收合導覽'} onClick={() => setCollapsed(!collapsed)}>{collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}</button></div>
+      <nav aria-label="工具導覽"><div className="navigation-group">{SQL_LINKS.map(link => <NavLink key={link.path} to={link.path} title={collapsed ? link.label : undefined} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}><ToolIcon path={link.path} /><span>{link.label}</span>{link.path === '/sql-format' && <small>PoorSQL</small>}</NavLink>)}</div>
+        <div className="navigation-divider" />
+        <NavLink to="/tools" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} title={collapsed ? '所有工具' : undefined}><ToolIcon path="/tools" /><span>所有工具</span></NavLink>
+        {CATEGORIES.map(category => {
+          const tools = TOOLS.filter(tool => tool.categoryId === category.id && !SQL_LINKS.some(link => link.path === tool.path));
+          return tools.length ? <div className="navigation-group" key={category.id}><h2>{category.label.replace(/^\S+\s/, '')}</h2>{tools.map(tool => <NavLink to={tool.path} key={tool.path} title={collapsed ? tool.label : undefined} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}><ToolIcon path={tool.path} /><span>{tool.label}</span></NavLink>)}</div> : null;
+        })}
+      </nav>
+      <div className="sidebar-note"><ShieldCheck size={18} /><div><strong>資料留在你的瀏覽器</strong><p>貼上、整理、複製。自在工作。</p></div></div>
+    </aside>
+    <main id="workspace" tabIndex={-1} className={`workspace ${sqlWorkspace ? 'sql-workspace' : 'legacy-tools'}`}>
+      <div className="workspace-inner">
+        <div className="breadcrumbs"><Link to="/tools">工具箱</Link><span>/</span><span>{currentTool?.label || '所有工具'}</span></div>
+        {sqlWorkspace && <nav className="workspace-tabs" aria-label="SQL 工作流程">{SQL_LINKS.map(link => <NavLink key={link.path} to={link.path} className={({ isActive }) => isActive ? 'active' : ''}>{link.label}</NavLink>)}</nav>}
+        {children}
+        <footer className="workspace-footer"><span>SQL Dev Toolkit</span><span><CircleHelp size={14} /> SQL 著色與格式化由 PoorSQL 提供</span></footer>
+      </div>
+    </main>
+    <Appearance open={appearanceOpen} onClose={() => setAppearanceOpen(false)} preference={preference} onChange={setPreference} />
+  </div>;
+}

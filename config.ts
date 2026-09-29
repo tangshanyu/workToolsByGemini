@@ -8,6 +8,10 @@ export const CATEGORIES: Category[] = [
 ];
 
 export const TOOLS: NavItem[] = [
+  {
+    path: '/sql-format', label: 'SQL 格式化', icon: '✨', categoryId: 'sql-utils',
+    desc: '使用 PoorSQL 整理 SQL、調整縮排與逗號風格，並保留彩色結果。'
+  },
   // --- SQL Utilities ---
   {
     path: '/param-replace',
