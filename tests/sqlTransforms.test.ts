@@ -25,13 +25,29 @@ test('named replacement ignores comments, preserves wildcards and supports empty
   assert.deepEqual(findNamedParams(sql), ['Parm1', 'Parm2', 'Parm3', 'Parm10']);
   assert.equal(replaceNamedParams(sql, { Parm1: '$&', Parm2: "O'Reilly", Parm3: '', Parm10: "'Parm1'" }), "SELECT '$&', '%O''Reilly%', '', '''Parm1''' -- 'Parm99'\n/* 'Parm88' */");
 });
-test('Java strings round-trip SQL quotes, backslashes, tabs and line comments', () => {
+test('Java append uses spaces and preserves quotes, backslashes, tabs and comment boundaries', () => {
   const sql = 'SELECT "NAME", \'C:\\tools\' -- keep this comment\n\tFROM T';
   const java = sqlToJava(sql);
   const reconstructed = java.split('\n').map(line => JSON.parse(line.slice('sb.append('.length, -2))).join('');
-  assert.equal(reconstructed, sql + '\n');
+  assert.equal(reconstructed, 'SELECT "NAME", \'C:\\tools\' /* keep this comment */ \tFROM T ');
+  assert.doesNotMatch(java, /(?<!\\)\\n/);
   assert.match(java, /\\"NAME\\"/);
   assert.match(java, /C:\\\\tools/);
+});
+test('Java space joining cannot expose SQL inside converted line comments', () => {
+  const java = sqlToJava('SELECT 1 -- */ hidden /*\nWHERE id = 1\n');
+  const reconstructed = java.split('\n').map(line => JSON.parse(line.slice('sb.append('.length, -2))).join('');
+  assert.equal(reconstructed, 'SELECT 1 /* * / hidden / * */ WHERE id = 1 ');
+  assert.match(tokenizeSql(reconstructed).filter(token => token.kind === 'code').map(token => token.text).join(''), /WHERE id = 1/);
+  assert.equal(java.split('\n').length, 2);
+});
+test('Java preserves meaningful newlines inside literals and quoted identifiers without newline escapes', () => {
+  const sql = "SELECT 'a\nb' AS [row\r\nname]";
+  const java = sqlToJava(sql);
+  const reconstructed = [...java.matchAll(/"(?:[^"\\]|\\.)*"|\(char\)(\d+)/g)]
+    .map(match => match[1] ? String.fromCharCode(Number(match[1])) : JSON.parse(match[0])).join('');
+  assert.equal(reconstructed, sql + ' ');
+  assert.doesNotMatch(java, /\\[nr]/);
 });
 test('SELECT field extraction skips CTEs, subqueries, quoted commas and function arguments', () => {
   const sql = "WITH x AS (SELECT a,b FROM t) SELECT x.USER_ID, COALESCE(x.A, x.B) AS amount, 'a,b' AS literal, (SELECT max(z) FROM q) AS value FROM x";

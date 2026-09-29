@@ -114,9 +114,30 @@ export function escapeJavaString(value: string): string {
   return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\r/g, '\\r').replace(/\n/g, '\\n').replace(/\t/g, '\\t').replace(/\f/g, '\\f').replace(/\u0008/g, '\\b');
 }
 export function sqlToJava(sql: string): string {
-  // Each original SQL line gets a real newline in the resulting Java string.
-  // This preserves -- comments and the boundary between SQL tokens.
-  return sql.replace(/\r\n?/g, '\n').split('\n').map(line => `sb.append("${escapeJavaString(line)}\\n");`).join('\n');
+  const lines: string[] = [];
+  let buffer = '', expressions: string[] = [];
+  const flush = () => { if (buffer) { expressions.push(`"${escapeJavaString(buffer)}"`); buffer = ''; } };
+  const finish = () => { buffer += ' '; flush(); lines.push(`sb.append(${expressions.join(' + ')});`); expressions = []; };
+  for (const token of tokenizeSql(sql)) {
+    if (token.kind === 'string' || token.kind === 'identifier') {
+      // A newline inside a quoted value belongs to its value, not its layout.
+      // Character expressions preserve it without introducing a \n escape.
+      for (const piece of token.text.split(/(\r\n|\r|\n)/)) {
+        if (/^[\r\n]+$/.test(piece)) { flush(); for (const character of piece) expressions.push(`(char)${character.charCodeAt(0)}`); }
+        else buffer += piece;
+      }
+      continue;
+    }
+    // A -- comment would swallow the next clause when lines are joined with spaces.
+    const source = token.kind === 'comment' && token.text.startsWith('--')
+      ? '/*' + token.text.slice(2).replace(/\/\*|\*\//g, delimiter => delimiter[0] + ' ' + delimiter[1]) + ' */'
+      : token.text;
+    const pieces = source.split(/\r\n|\r|\n/);
+    buffer += pieces[0];
+    for (const piece of pieces.slice(1)) { finish(); buffer += piece; }
+  }
+  if (buffer.trim() || expressions.length) finish();
+  return lines.join('\n');
 }
 
 function selectRange(sql: string): { start: number; end: number } | null {
