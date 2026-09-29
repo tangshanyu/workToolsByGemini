@@ -1,11 +1,19 @@
 import DOMPurify from 'dompurify';
 import { tokenizeSql } from './sqlTransforms';
+import { DEFAULT_WORD_COLORS, isWordColors, type WordColors } from './wordColors';
 
-// Toad-inspired Word palette. Keep it independent of the application's theme.
-const WORD_COLORS: Record<string, string> = {
-  SQLKeyword: '#0000FF', SQLFunction: '#800080', SQLString: '#A31515',
-  SQLComment: '#008000', SQLNumber: '#098658', SQLOperator: '#000000',
-};
+function classifyWordConditions(container: HTMLElement): void {
+  // The reference distinguishes these words from SELECT/FROM/WHERE/IS.
+  for (const element of container.querySelectorAll('.SQLKeyword')) {
+    if (element.childElementCount) continue;
+    const source = element.textContent || '';
+    if (/^(?:AND|OR|ON|NULL)$/i.test(source.trim())) {
+      element.classList.replace('SQLKeyword', 'SQLCondition');
+      continue;
+    }
+    element.innerHTML = escapeHtml(source).replace(/\b(?:AND|OR|ON|NULL)\b/gi, word => `<span class="SQLCondition">${word}</span>`);
+  }
+}
 
 function highlightWordNumbers(container: HTMLElement): void {
   // PoorSQL does not emit a numeric class. Only enrich unstyled SQL text;
@@ -43,20 +51,26 @@ export function htmlToText(html: string): string {
 export function escapeHtml(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
-export function wordHtml(text: string, highlightedHtml?: string): string {
+export function wordHtml(text: string, highlightedHtml?: string, colors: WordColors = DEFAULT_WORD_COLORS): string {
+  const palette = isWordColors(colors) ? colors : DEFAULT_WORD_COLORS;
+  const styles: Record<string, string> = {
+    SQLKeyword: palette.keyword, SQLCondition: palette.condition, SQLFunction: palette.function,
+    SQLString: palette.string, SQLComment: palette.comment, SQLNumber: palette.number, SQLOperator: palette.operator,
+  };
   const container = document.createElement('div');
   container.innerHTML = highlightedHtml ? sanitizeSqlHtml(highlightedHtml) : escapeHtml(text);
-  if (highlightedHtml) highlightWordNumbers(container);
+  if (highlightedHtml) { classifyWordConditions(container); highlightWordNumbers(container); }
   container.querySelectorAll('*').forEach(element => {
     let style = 'background-color:transparent;border:none;';
     for (const name of element.classList) {
-      if (WORD_COLORS[name]) style += `color:${WORD_COLORS[name]};`;
+      const color = name === 'SQLOperator' && /^[.,();]+$/.test((element.textContent || '').trim()) ? palette.identifier : styles[name];
+      if (color) style += `color:${color};`;
       if (name === 'SQLErrorHighlight') style += 'background-color:#FFC0C0;';
     }
     if (element.classList.contains('SQLComment') && /[\u3400-\u9fff]/.test(element.textContent || '')) style += "font-family:'標楷體','DFKai-SB',serif;";
     element.removeAttribute('class'); element.setAttribute('style', style);
   });
-  return `<div style="font-family:'Courier New',monospace;font-size:11pt;font-weight:normal;font-style:normal;text-decoration:none;line-height:1.5;white-space:pre;tab-size:4;color:#000000;background-color:#FFFFFF;border:none;margin:0;">${container.innerHTML}</div>`;
+  return `<div style="font-family:'Courier New',monospace;font-size:11pt;font-weight:normal;font-style:normal;text-decoration:none;line-height:1.5;white-space:pre;tab-size:4;color:${palette.identifier};background-color:#FFFFFF;border:none;margin:0;">${container.innerHTML}</div>`;
 }
 function legacyCopy(text: string, html?: string): boolean {
   const selection = window.getSelection();

@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import Layout from './components/Layout';
 import SqlFormatter from './pages/SqlFormatter';
+import { SqlColorsProvider } from './hooks/SqlColorsContext';
 const Home = lazy(() => import('./pages/Home'));
 const SqlToJava = lazy(() => import('./pages/SqlToJava'));
 const SqlParamReplacer = lazy(() => import('./pages/SqlParamReplacer'));
@@ -14,7 +15,7 @@ const CsvEditor = lazy(() => import('./pages/CsvEditor'));
 const FixedWidthProcessor = lazy(() => import('./pages/FixedWidthProcessor'));
 const VLookup = lazy(() => import('./pages/VLookup'));
 export default function App() {
-  return <HashRouter><Layout><Suspense fallback={<div className="route-loading" role="status">正在準備工作區…</div>}><Routes>
+  return <SqlColorsProvider><HashRouter><Layout><Suspense fallback={<div className="route-loading" role="status">正在準備工作區…</div>}><Routes>
     <Route path="/" element={<Navigate to="/sql-format" replace />} />
     <Route path="/sql-format" element={<SqlFormatter />} />
     <Route path="/tools" element={<Home />} />
@@ -24,5 +25,5 @@ export default function App() {
     <Route path="/domain-convert" element={<DomainConverter />} /><Route path="/csv-editor" element={<CsvEditor />} />
     <Route path="/fixed-width" element={<FixedWidthProcessor />} /><Route path="/vlookup" element={<VLookup />} />
     <Route path="*" element={<Navigate to="/sql-format" replace />} />
-  </Routes></Suspense></Layout></HashRouter>;
+  </Routes></Suspense></Layout></HashRouter></SqlColorsProvider>;
 }

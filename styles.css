@@ -164,6 +164,23 @@ input, select, textarea { accent-color: var(--md-primary); }
 .md-switch:checked { background: var(--md-primary); border-color: var(--md-primary); }
 .md-switch:checked::before { background: var(--md-on-primary); transform: translateX(12px); }
 .settings-note { font-size: 10px; color: var(--md-on-surface-variant); margin: 14px 0 0; }
+.word-color-settings { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--md-outline-variant); }
+.settings-heading h3 { display: flex; align-items: center; gap: 9px; font-size: 13px; font-weight: 600; margin: 0; }
+.word-color-settings>.settings-note { margin-top: 0; line-height: 1.8; }
+.word-color-layout { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 22px; margin-top: 18px; }
+.word-color-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px 20px; }
+.word-color-field { min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.word-color-field label { min-width: 0; }
+.word-color-field strong { display: block; font-size: 11px; font-weight: 500; }
+.word-color-field small { display: block; font-size: 9px; line-height: 1.5; margin-top: 4px; color: var(--md-on-surface-variant); }
+.word-color-inputs { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.word-color-inputs input[type="color"] { width: 33px; height: 33px; padding: 3px; border: 1px solid var(--md-outline-variant); border-radius: 9px; background: var(--md-surface-container); cursor: pointer; }
+.word-color-inputs input[type="text"] { width: 76px; min-width: 0; padding: 8px 7px; border: 1px solid var(--md-outline-variant); border-radius: 9px; background: var(--md-surface-container); color: var(--md-on-surface); font-family: Consolas, monospace; font-size: 11px; }
+.word-color-inputs input[aria-invalid="true"] { border-color: var(--md-error); }
+.word-color-preview { min-width: 0; padding: 15px; border-radius: 14px; background: #fff; border: 1px solid #ddd; }
+.word-preview-label { display: block; color: #666; font-size: 9px; letter-spacing: .7px; margin-bottom: 12px; }
+.word-color-preview>div { overflow: auto; }
+.word-result-scroll { background: #fff; }
 .feedback { display: flex; gap: 9px; align-items: flex-start; border-radius: 14px; padding: 14px 18px; margin: 14px 0; font-size: 12px; line-height: 1.7; }
 .feedback svg { flex-shrink: 0; margin-top: 2px; }
 .feedback-error { background: var(--md-error-container); color: var(--md-on-error-container); }
@@ -238,10 +255,12 @@ input, select, textarea { accent-color: var(--md-primary); }
 .legacy-tools [class*="shadow-xl"] { box-shadow: none; }
 
 @media (min-width: 1700px) { .input-panel .code-input textarea, .result-scroll, .result-editor { height: 440px; } }
+@media (max-width: 1450px) { .word-color-layout { grid-template-columns: 1fr; } .word-color-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } .word-color-field { flex-direction: column; align-items: flex-start; gap: 9px; } }
 @media (max-width: 1350px) { .format-summary { display: none; } .format-button kbd { display: none; } }
 @media (max-width: 1200px) { .workspace-inner { padding: 24px; } .settings-switches { grid-template-columns: repeat(2, 1fr); } .formatter-intro .intro-badge { display: none; } .header-context { padding-left: 16px; } .result-actions .md-button { padding: 8px 10px; } }
 @media (max-width: 1000px) { :root { --sidebar-width: 215px; } .brand>span:last-child { font-size: 14px; } .format-grid { grid-template-columns: 1fr; } .format-control-bar { flex-wrap: wrap; } .tool-grid { grid-template-columns: repeat(2, 1fr); } .parameter-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 767px) {
+  .word-color-grid { grid-template-columns: 1fr; gap: 14px; } .word-color-field { flex-direction: row; align-items: center; } .word-color-layout { gap: 20px; }
   .app-header { padding: 0 15px; height: 68px; gap: 10px; } .mobile-menu { display: inline-flex; margin-right: 7px; }
   .header-context { display: none; } .brand { gap: 8px; font-size: 12px; } .brand-symbol { width: 32px; height: 32px; border-radius: 11px; }
   .brand>span:last-child { font-size: 12px; } .appearance-trigger { padding: 9px 12px; } .appearance-trigger>span:last-child { display: none; }

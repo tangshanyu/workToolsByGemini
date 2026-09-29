@@ -1,6 +1,7 @@
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Check, Copy, FileText, Palette, Pencil, Sparkles } from 'lucide-react';
 import { copyText, htmlToText, sanitizeSqlHtml, wordHtml } from '../utils/clipboard';
+import { useSqlColors } from '../hooks/SqlColorsContext';
 
 interface PageHeaderProps { title: string; icon: React.ReactNode; description: React.ReactNode; controls?: React.ReactNode; className?: string }
 export function PageHeader({ title, icon, description, controls, className = '' }: PageHeaderProps) {
@@ -31,23 +32,27 @@ interface OutputBoxProps { title: string; content: string; placeholder?: string;
 export function OutputBox({ title, content, placeholder = '結果將顯示於此…', isHtml = false, plainText, onTextChange, meta }: OutputBoxProps) {
   const [text, setText] = useState(() => plainText ?? (isHtml ? htmlToText(content) : content));
   const [html, setHtml] = useState(isHtml ? content : '');
-  const [editing, setEditing] = useState(false);
+  const [mode, setMode] = useState<'preview' | 'word' | 'edit'>('preview');
+  const editing = mode === 'edit';
+  const { colors } = useSqlColors();
   const [copied, setCopied] = useState<'text' | 'word' | null>(null);
   const [copyError, setCopyError] = useState('');
   const timeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => { setText(plainText ?? (isHtml ? htmlToText(content) : content)); setHtml(isHtml ? content : ''); setCopyError(''); }, [content, plainText, isHtml]);
   useEffect(() => () => clearTimeout(timeout.current), []);
   const safeHtml = useMemo(() => sanitizeSqlHtml(html), [html]);
+  const wordPreview = useMemo(() => mode === 'word' ? wordHtml(text, html || undefined, colors) : '', [mode, text, html, colors]);
   const copy = async (type: 'text' | 'word') => {
     try {
-      setCopyError(''); await copyText(text, type === 'word' ? wordHtml(text, html || undefined) : undefined);
+      setCopyError(''); await copyText(text, type === 'word' ? wordHtml(text, html || undefined, colors) : undefined);
       setCopied(type); clearTimeout(timeout.current); timeout.current = setTimeout(() => setCopied(null), 2200);
     } catch (error) { setCopyError(error instanceof Error ? error.message : '複製失敗'); }
   };
   return <section className="output-panel" aria-label={title}>
     <div className="editor-heading"><h2><Sparkles size={17} />{title}</h2>{meta}<span className="editor-badge">OUTPUT</span></div>
-    <div className="result-toolbar"><div className="segmented small"><button aria-pressed={!editing} onClick={() => setEditing(false)}><Palette size={15} />預覽</button><button aria-pressed={editing} onClick={() => setEditing(true)}><Pencil size={15} />編輯</button></div><span className="muted result-lines">{text ? text.split('\n').length : 0} 行</span></div>
+    <div className="result-toolbar"><div className="segmented small"><button aria-pressed={mode === 'preview'} onClick={() => setMode('preview')}><Palette size={15} />預覽</button>{(isHtml || onTextChange) && <button aria-pressed={mode === 'word'} onClick={() => setMode('word')}><FileText size={15} />Word 預覽</button>}<button aria-pressed={editing} onClick={() => setMode('edit')}><Pencil size={15} />編輯</button></div><span className="muted result-lines">{text ? text.split('\n').length : 0} 行</span></div>
     {editing ? <textarea className="result-editor font-mono" aria-label={title + '編輯'} spellCheck={false} value={text} placeholder={placeholder} wrap="off" onChange={event => { setText(event.target.value); setHtml(''); onTextChange?.(event.target.value); }} />
+      : mode === 'word' && text ? <div className="result-scroll word-result-scroll" aria-label={title + ' Word 預覽'} dangerouslySetInnerHTML={{ __html: wordPreview }} />
       : <div className="result-scroll">{text ? safeHtml ? <pre className="SQLCode" dangerouslySetInnerHTML={{ __html: safeHtml }} /> : <pre className="SQLCode">{text}</pre> : <div className="result-placeholder"><FileText size={34} strokeWidth={1.2} /><strong>整理好的結果，會在這裡。</strong><p>{placeholder}</p></div>}</div>}
     <div className="result-actions"><Button variant="secondary" disabled={!text} onClick={() => copy('text')}>{copied === 'text' ? <Check size={16} /> : <Copy size={16} />}{copied === 'text' ? '已複製' : '複製文字'}</Button><Button variant="ghost" disabled={!text} onClick={() => copy('word')}>{copied === 'word' ? <Check size={16} /> : <Palette size={16} />}{copied === 'word' ? '已複製' : '彩色複製到 Word'}</Button></div>
     <div className={`copy-message ${copyError ? 'error-text' : 'muted'}`} role="status">{copyError || (copied ? '已複製目前顯示的內容。' : editing && isHtml && !html ? '重新格式化後，可更新語法著色。' : '')}</div>
