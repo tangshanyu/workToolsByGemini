@@ -2,7 +2,7 @@
 
 以 PoorSQL 為核心的 SQL 工具箱，使用 Material You 動態色彩。提供 SQL 格式化、SQL 轉 Java、參數替換、問號轉換，以及原有的資料整理工具。
 
-資料與格式工具新增 Markdown 閱讀器（`#/markdown-reader`）：選取或拖入 `.md`／`.markdown` 檔案，在瀏覽器內切換排版預覽與原始文字。預覽支援 GitHub Flavored Markdown 的表格與待辦清單。檔案只在本機讀取、不保存內容；原始 HTML 會略過，圖片不會自動載入。支援 UTF-8，檔案上限 10 MB。
+資料與格式工具新增 Markdown 閱讀器（`#/markdown-reader`）：選取或拖入 `.md`／`.markdown` 檔案，或直接貼上 Markdown／純文字即時預覽，並可切換查看原始文字。預覽支援 GitHub Flavored Markdown 的表格與待辦清單。內容只在本機讀取、不保存；原始 HTML 會略過，圖片不會自動載入。檔案支援 UTF-8，上限 10 MB。
 
 ## 本機啟動
 

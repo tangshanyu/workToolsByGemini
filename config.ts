@@ -71,7 +71,7 @@ export const TOOLS: NavItem[] = [
     label: 'Markdown 閱讀器',
     icon: '📄',
     categoryId: 'data-fmt',
-    desc: '讀取本機 .md 檔案，預覽標題、表格、清單與程式碼，也可檢視原始文字。'
+    desc: '讀取本機 .md 檔案或貼上純文字，即時預覽標題、表格、清單與程式碼。'
   },
   {
     path: '/fixed-width',
