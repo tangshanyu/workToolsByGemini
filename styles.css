@@ -230,6 +230,54 @@ input, select, textarea { accent-color: var(--md-primary); }
 .tool-card h3 { font-weight: 500; font-size: 16px; margin: 15px 0 10px; }
 .tool-card p { font-size: 11px; color: var(--md-on-surface-variant); line-height: 1.9; }
 .tool-card .tonal-icon { width: 40px; height: 40px; border-radius: 13px; }
+.markdown-reader { max-width: 1160px; margin: 0 auto; }
+.markdown-file-input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.markdown-dropzone { display: flex; align-items: center; gap: 18px; padding: 22px 25px; background: var(--md-surface-container-low); border: 2px dashed var(--md-outline-variant); border-radius: 24px; transition: background .15s, border-color .15s; }
+.markdown-dropzone.is-dragging { background: var(--md-primary-container); border-color: var(--md-primary); }
+.markdown-drop-icon { width: 46px; height: 46px; display: grid; place-items: center; flex-shrink: 0; border-radius: 15px; background: var(--md-secondary-container); color: var(--md-on-secondary-container); }
+.markdown-drop-copy { display: flex; flex-direction: column; gap: 6px; min-width: 0; margin-right: auto; }
+.markdown-drop-copy strong { font-size: 14px; font-weight: 600; }
+.markdown-drop-copy span { font-size: 11px; color: var(--md-on-surface-variant); line-height: 1.6; }
+.markdown-error, .markdown-loading { padding: 12px 16px; border-radius: 14px; font-size: 12px; margin: 14px 0 0; }
+.markdown-error { background: var(--md-error-container); color: var(--md-on-error-container); }
+.markdown-loading { background: var(--md-surface-container); color: var(--md-on-surface-variant); }
+.markdown-document { margin-top: 20px; border: 1px solid var(--md-outline-variant); border-radius: 25px; overflow: hidden; background: var(--md-surface-container-low); }
+.markdown-document-header { display: flex; align-items: center; justify-content: space-between; gap: 15px; padding: 15px 23px; border-bottom: 1px solid var(--md-outline-variant); }
+.markdown-file-details { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.markdown-file-details > svg { color: var(--md-primary); flex-shrink: 0; }
+.markdown-file-details > div { min-width: 0; }
+.markdown-file-details h2 { font-size: 14px; font-weight: 600; margin: 0 0 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.markdown-file-details span { font-size: 10px; color: var(--md-on-surface-variant); }
+.markdown-view-toolbar { padding: 12px 23px; border-bottom: 1px solid var(--md-outline-variant); }
+.markdown-document-content { min-height: 330px; max-height: 70vh; overflow: auto; padding: 24px 32px; }
+.markdown-welcome { min-height: 250px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 11px; color: var(--md-on-surface-variant); text-align: center; }
+.markdown-welcome svg { color: var(--md-primary); }
+.markdown-welcome strong { color: var(--md-on-surface); font-size: 15px; }
+.markdown-welcome p, .markdown-empty-file { font-size: 12px; color: var(--md-on-surface-variant); }
+.markdown-source { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--md-on-surface); font: 12px/1.75 Consolas, 'Courier New', monospace; }
+.markdown-prose { color: var(--md-on-surface); font-size: 14px; line-height: 1.8; overflow-wrap: anywhere; }
+.markdown-prose > :first-child { margin-top: 0; }
+.markdown-prose h1, .markdown-prose h2, .markdown-prose h3, .markdown-prose h4, .markdown-prose h5, .markdown-prose h6 { line-height: 1.4; margin: 1.6em 0 .6em; font-weight: 650; }
+.markdown-prose h1 { font-size: 2em; padding-bottom: .3em; border-bottom: 1px solid var(--md-outline-variant); }
+.markdown-prose h2 { font-size: 1.5em; padding-bottom: .3em; border-bottom: 1px solid var(--md-outline-variant); }
+.markdown-prose h3 { font-size: 1.25em; }
+.markdown-prose p, .markdown-prose ul, .markdown-prose ol, .markdown-prose blockquote, .markdown-prose pre, .markdown-prose table { margin: 0 0 1.15em; }
+.markdown-prose ul, .markdown-prose ol { padding-left: 1.8em; }
+.markdown-prose li { margin: .25em 0; }
+.markdown-prose li input[type="checkbox"] { margin-right: 7px; }
+.markdown-prose blockquote { padding: 2px 0 2px 18px; border-left: 4px solid var(--md-primary); color: var(--md-on-surface-variant); }
+.markdown-prose blockquote > :last-child { margin-bottom: 0; }
+.markdown-prose pre { overflow: auto; padding: 16px 18px; border-radius: 15px; background: var(--md-surface-container-high); font: 12px/1.6 Consolas, 'Courier New', monospace; }
+.markdown-prose code { font: .9em Consolas, 'Courier New', monospace; background: var(--md-surface-container-high); border-radius: 4px; padding: .13em .3em; }
+.markdown-prose pre code { background: none; padding: 0; }
+.markdown-prose a { color: var(--md-primary); text-decoration: underline; text-underline-offset: 3px; }
+.markdown-inactive-link, .markdown-image-note { color: var(--md-on-surface-variant); }
+.markdown-image-note { display: inline-block; padding: 2px 8px; border: 1px solid var(--md-outline-variant); border-radius: 8px; font-size: .85em; }
+.markdown-prose table { width: max-content; max-width: 100%; border-collapse: collapse; display: block; overflow: auto; }
+.markdown-prose th, .markdown-prose td { padding: 7px 12px; border: 1px solid var(--md-outline-variant); text-align: left; }
+.markdown-prose th { background: var(--md-surface-container-high); font-weight: 600; }
+.markdown-prose tr:nth-child(even) { background: var(--md-surface-container); }
+.markdown-prose hr { border: 0; border-top: 1px solid var(--md-outline-variant); margin: 22px 0; }
 .conversion-options { padding: 16px 21px; background: var(--md-surface-container); border-radius: 18px; display: flex; align-items: center; gap: 22px; flex-wrap: wrap; margin-bottom: 18px; font-size: 11px; }
 .conversion-options label { display: flex; align-items: center; gap: 7px; }
 .conversion-options input { width: 16px; height: 16px; }
@@ -260,6 +308,8 @@ input, select, textarea { accent-color: var(--md-primary); }
 @media (max-width: 1200px) { .workspace-inner { padding: 24px; } .settings-switches { grid-template-columns: repeat(2, 1fr); } .formatter-intro .intro-badge { display: none; } .header-context { padding-left: 16px; } .result-actions .md-button { padding: 8px 10px; } }
 @media (max-width: 1000px) { :root { --sidebar-width: 215px; } .brand>span:last-child { font-size: 14px; } .format-grid { grid-template-columns: 1fr; } .format-control-bar { flex-wrap: wrap; } .tool-grid { grid-template-columns: repeat(2, 1fr); } .parameter-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 767px) {
+  .markdown-dropzone { flex-wrap: wrap; padding: 17px; gap: 12px; } .markdown-drop-copy { flex: 1 1 calc(100% - 65px); } .markdown-dropzone .md-button { width: 100%; }
+  .markdown-document-header { padding: 13px 16px; } .markdown-view-toolbar { padding: 10px 16px; } .markdown-document-content { padding: 18px; }
   .word-color-grid { grid-template-columns: 1fr; gap: 14px; } .word-color-field { flex-direction: row; align-items: center; } .word-color-layout { gap: 20px; }
   .app-header { padding: 0 15px; height: 68px; gap: 10px; } .mobile-menu { display: inline-flex; margin-right: 7px; }
   .header-context { display: none; } .brand { gap: 8px; font-size: 12px; } .brand-symbol { width: 32px; height: 32px; border-radius: 11px; }

@@ -67,6 +67,13 @@ export const TOOLS: NavItem[] = [
     desc: "匯入 CSV 檔案或貼上文字，以表格方式編輯後匯出下載。"
   },
   {
+    path: '/markdown-reader',
+    label: 'Markdown 閱讀器',
+    icon: '📄',
+    categoryId: 'data-fmt',
+    desc: '讀取本機 .md 檔案，預覽標題、表格、清單與程式碼，也可檢視原始文字。'
+  },
+  {
     path: '/fixed-width',
     label: '定長文字處理',
     icon: '📏',
