@@ -239,22 +239,35 @@ input, select, textarea { accent-color: var(--md-primary); }
 .markdown-drop-copy { display: flex; flex-direction: column; gap: 6px; min-width: 0; margin-right: auto; }
 .markdown-drop-copy strong { font-size: 14px; font-weight: 600; }
 .markdown-drop-copy span { font-size: 11px; color: var(--md-on-surface-variant); line-height: 1.6; }
-.markdown-paste-panel { padding: 20px 23px 16px; border: 1px solid var(--md-outline-variant); border-radius: 24px; background: var(--md-surface-container-low); }
-.markdown-paste-panel textarea { display: block; width: 100%; min-height: 170px; resize: vertical; padding: 15px 17px; border: 1px solid var(--md-outline-variant); border-radius: 15px; background: var(--md-surface); color: var(--md-on-surface); font: 12px/1.7 Consolas, 'Courier New', monospace; }
-.markdown-paste-panel textarea:focus { outline: 2px solid var(--md-primary); outline-offset: 1px; }
-.markdown-paste-panel p { margin: 10px 0 0; font-size: 10px; color: var(--md-on-surface-variant); }
+.markdown-paste-launch { display: flex; align-items: center; gap: 18px; padding: 22px 25px; border: 1px solid var(--md-outline-variant); border-radius: 24px; background: var(--md-surface-container-low); }
+.markdown-paste-launch > div { flex: 1; min-width: 0; }
+.markdown-paste-launch strong { font-size: 14px; }
+.markdown-paste-launch p { margin: 6px 0 0; color: var(--md-on-surface-variant); font-size: 11px; }
 .markdown-error, .markdown-loading { padding: 12px 16px; border-radius: 14px; font-size: 12px; margin: 14px 0 0; }
 .markdown-error { background: var(--md-error-container); color: var(--md-on-error-container); }
 .markdown-loading { background: var(--md-surface-container); color: var(--md-on-surface-variant); }
-.markdown-document { margin-top: 20px; border: 1px solid var(--md-outline-variant); border-radius: 25px; overflow: hidden; background: var(--md-surface-container-low); }
-.markdown-document-header { display: flex; align-items: center; justify-content: space-between; gap: 15px; padding: 15px 23px; border-bottom: 1px solid var(--md-outline-variant); }
+.markdown-document-summary { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-top: 20px; padding: 19px 23px; border: 1px solid var(--md-outline-variant); border-radius: 24px; background: var(--md-surface-container-low); }
 .markdown-file-details { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .markdown-file-details > svg { color: var(--md-primary); flex-shrink: 0; }
 .markdown-file-details > div { min-width: 0; }
 .markdown-file-details h2 { font-size: 14px; font-weight: 600; margin: 0 0 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .markdown-file-details span { font-size: 10px; color: var(--md-on-surface-variant); }
-.markdown-view-toolbar { padding: 12px 23px; border-bottom: 1px solid var(--md-outline-variant); }
-.markdown-document-content { min-height: 330px; max-height: 70vh; overflow: auto; padding: 24px 32px; }
+.markdown-reader-dialog { width: calc(100vw - 24px); height: calc(100dvh - 24px); max-width: none; max-height: none; margin: auto; padding: 0; border: 1px solid var(--md-outline-variant); border-radius: 24px; overflow: hidden; background: var(--md-surface); color: var(--md-on-surface); box-shadow: 0 20px 80px #0005; }
+.markdown-reader-dialog[open] { display: flex; flex-direction: column; }
+.markdown-reader-dialog::backdrop { background: #141016b8; backdrop-filter: blur(4px); }
+.markdown-dialog-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 72px; padding: 12px 22px; border-bottom: 1px solid var(--md-outline-variant); background: var(--md-surface-container-low); }
+.markdown-dialog-header .markdown-file-details h2 { font-size: 16px; }
+.markdown-dialog-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.markdown-dialog-body { display: grid; grid-template-columns: minmax(0, 1fr); flex: 1; min-height: 0; }
+.markdown-reader-dialog.is-paste-mode .markdown-dialog-body { grid-template-columns: minmax(0, 42%) minmax(0, 58%); }
+.markdown-dialog-editor, .markdown-dialog-result { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.markdown-dialog-editor { border-right: 1px solid var(--md-outline-variant); }
+.markdown-dialog-editor label, .markdown-dialog-toolbar { display: flex; align-items: center; min-height: 56px; padding: 10px 20px; border-bottom: 1px solid var(--md-outline-variant); background: var(--md-surface-container-low); font-size: 12px; font-weight: 600; }
+.markdown-dialog-editor textarea { flex: 1; min-height: 0; width: 100%; resize: none; padding: 20px 24px; border: 0; background: var(--md-surface); color: var(--md-on-surface); font: 13px/1.75 Consolas, 'Courier New', monospace; }
+.markdown-dialog-editor textarea:focus { outline: 2px solid var(--md-primary); outline-offset: -2px; }
+.markdown-dialog-toolbar { justify-content: space-between; gap: 12px; }
+.markdown-dialog-scroll { flex: 1; min-height: 0; overflow: auto; padding: 25px clamp(20px, 3vw, 50px); }
+.markdown-dialog-scroll .markdown-prose { max-width: 1100px; margin: 0 auto; }
 .markdown-welcome { min-height: 250px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 11px; color: var(--md-on-surface-variant); text-align: center; }
 .markdown-welcome svg { color: var(--md-primary); }
 .markdown-welcome strong { color: var(--md-on-surface); font-size: 15px; }
@@ -267,7 +280,7 @@ input, select, textarea { accent-color: var(--md-primary); }
 .markdown-prose h2 { font-size: 1.5em; padding-bottom: .3em; border-bottom: 1px solid var(--md-outline-variant); }
 .markdown-prose h3 { font-size: 1.25em; }
 .markdown-prose p, .markdown-prose ul, .markdown-prose ol, .markdown-prose blockquote, .markdown-prose pre, .markdown-prose table { margin: 0 0 1.15em; }
-.markdown-reader.is-paste-mode .markdown-prose p { white-space: pre-wrap; }
+.markdown-reader-dialog.is-paste-mode .markdown-prose p { white-space: pre-wrap; }
 .markdown-prose ul, .markdown-prose ol { padding-left: 1.8em; }
 .markdown-prose li { margin: .25em 0; }
 .markdown-prose li input[type="checkbox"] { margin-right: 7px; }
@@ -314,9 +327,15 @@ input, select, textarea { accent-color: var(--md-primary); }
 @media (max-width: 1200px) { .workspace-inner { padding: 24px; } .settings-switches { grid-template-columns: repeat(2, 1fr); } .formatter-intro .intro-badge { display: none; } .header-context { padding-left: 16px; } .result-actions .md-button { padding: 8px 10px; } }
 @media (max-width: 1000px) { :root { --sidebar-width: 215px; } .brand>span:last-child { font-size: 14px; } .format-grid { grid-template-columns: 1fr; } .format-control-bar { flex-wrap: wrap; } .tool-grid { grid-template-columns: repeat(2, 1fr); } .parameter-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 767px) {
-  .markdown-input-tabs { width: 100%; } .markdown-input-tabs button { flex: 1; } .markdown-paste-panel { padding: 16px; }
+  .markdown-input-tabs { width: 100%; } .markdown-input-tabs button { flex: 1; }
   .markdown-dropzone { flex-wrap: wrap; padding: 17px; gap: 12px; } .markdown-drop-copy { flex: 1 1 calc(100% - 65px); } .markdown-dropzone .md-button { width: 100%; }
-  .markdown-document-header { padding: 13px 16px; } .markdown-view-toolbar { padding: 10px 16px; } .markdown-document-content { padding: 18px; }
+  .markdown-paste-launch, .markdown-document-summary { flex-wrap: wrap; padding: 17px; } .markdown-paste-launch .md-button, .markdown-document-summary .md-button { width: 100%; }
+  .markdown-reader-dialog { width: 100vw; height: 100dvh; border: 0; border-radius: 0; }
+  .markdown-dialog-header { padding: 10px 15px; min-height: 66px; } .markdown-dialog-header .markdown-file-details h2 { font-size: 14px; }
+  .markdown-reader-dialog.is-paste-mode .markdown-dialog-body { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(170px, 42%) minmax(200px, 58%); overflow: auto; }
+  .markdown-dialog-editor { border-right: 0; border-bottom: 1px solid var(--md-outline-variant); }
+  .markdown-dialog-editor label, .markdown-dialog-toolbar { min-height: 45px; padding: 7px 15px; }
+  .markdown-dialog-editor textarea { padding: 14px 16px; } .markdown-dialog-scroll { padding: 18px; }
   .word-color-grid { grid-template-columns: 1fr; gap: 14px; } .word-color-field { flex-direction: row; align-items: center; } .word-color-layout { gap: 20px; }
   .app-header { padding: 0 15px; height: 68px; gap: 10px; } .mobile-menu { display: inline-flex; margin-right: 7px; }
   .header-context { display: none; } .brand { gap: 8px; font-size: 12px; } .brand-symbol { width: 32px; height: 32px; border-radius: 11px; }
