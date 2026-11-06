@@ -1,11 +1,13 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { Button, PageHeader } from '../components/UI';
+import { FullPageWorkspace } from '../components/FullPageWorkspace';
 
 const CsvEditor: React.FC = () => {
   const [headers, setHeaders] = useState<string[]>([]);
   const [rows, setRows] = useState<string[][]>([]);
   const [csvInput, setCsvInput] = useState('');
   const [fileName, setFileName] = useState('');
+  const [workspaceOpen, setWorkspaceOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // --- CSV Parser ---
@@ -95,6 +97,7 @@ const CsvEditor: React.FC = () => {
       setHeaders(h);
       setRows(r);
       setCsvInput('');
+      if (h.length > 0) setWorkspaceOpen(true);
     };
     reader.readAsText(file, 'UTF-8');
 
@@ -109,6 +112,7 @@ const CsvEditor: React.FC = () => {
     setHeaders(h);
     setRows(r);
     setFileName('exported');
+    if (h.length > 0) setWorkspaceOpen(true);
   };
 
   // --- Cell Editing ---
@@ -179,6 +183,7 @@ const CsvEditor: React.FC = () => {
     setRows([]);
     setCsvInput('');
     setFileName('');
+    setWorkspaceOpen(false);
   };
 
   const hasTable = headers.length > 0;
@@ -248,9 +253,14 @@ const CsvEditor: React.FC = () => {
         </div>
       )}
 
+      {hasTable && <div className="data-workspace-summary">
+        <div><strong>{fileName || 'CSV 資料'}</strong><span>{headers.length} 欄 · {rows.length} 筆資料</span></div>
+        <Button onClick={() => setWorkspaceOpen(true)} variant="primary">⛶ 開啟大畫面編輯</Button>
+      </div>}
+
       {/* Table Editor */}
       {hasTable && (
-        <>
+        <FullPageWorkspace open={workspaceOpen} onClose={() => setWorkspaceOpen(false)} title={fileName ? `${fileName}.csv` : 'CSV 編輯器'} details={`${headers.length} 欄 · ${rows.length} 筆資料`} className="csv-workspace">
           {/* Action Bar */}
           <div className="flex flex-wrap gap-3 items-center shrink-0">
             <Button onClick={addRow} variant="secondary">➕ 新增行</Button>
@@ -266,7 +276,7 @@ const CsvEditor: React.FC = () => {
           </div>
 
           {/* Table */}
-          <div className="flex-1 overflow-auto rounded-xl border border-gray-200 dark:border-[#333] bg-white dark:bg-[#141414] shadow-sm">
+          <div className="csv-workspace-table flex-1 overflow-auto rounded-xl border border-gray-200 dark:border-[#333] bg-white dark:bg-[#141414] shadow-sm">
             <table className="min-w-full text-sm border-collapse">
               {/* Header Row */}
               <thead className="sticky top-0 z-10">
@@ -280,6 +290,7 @@ const CsvEditor: React.FC = () => {
                       <input
                         className="w-full p-2 bg-transparent font-semibold text-gray-700 dark:text-[#E8EAED] text-sm focus:outline-none focus:bg-blue-50 dark:focus:bg-[#004A77]/30 transition-colors"
                         value={h}
+                        aria-label={`第 ${colIdx + 1} 欄名稱`}
                         onChange={(e) => updateHeader(colIdx, e.target.value)}
                         spellCheck={false}
                       />
@@ -287,8 +298,9 @@ const CsvEditor: React.FC = () => {
                       {headers.length > 1 && (
                         <button
                           onClick={() => deleteColumn(colIdx)}
-                          className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full text-[10px] leading-none items-center justify-center hidden group-hover/th:flex hover:bg-red-600 transition-all shadow z-20"
+                          className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full text-[10px] leading-none flex items-center justify-center opacity-0 group-hover/th:opacity-100 group-focus-within/th:opacity-100 focus:opacity-100 hover:bg-red-600 transition-all shadow z-20"
                           title="刪除此欄"
+                          aria-label={`刪除第 ${colIdx + 1} 欄`}
                         >
                           ✕
                         </button>
@@ -314,6 +326,7 @@ const CsvEditor: React.FC = () => {
                         <input
                           className="w-full p-2 bg-transparent text-gray-700 dark:text-[#D4D4D4] text-sm font-mono focus:outline-none focus:bg-yellow-50 dark:focus:bg-[#2a2a00]/40 transition-colors"
                           value={cell}
+                          aria-label={`第 ${rowIdx + 1} 行，${headers[colIdx] || `第 ${colIdx + 1} 欄`}`}
                           onChange={(e) => updateCell(rowIdx, colIdx, e.target.value)}
                           spellCheck={false}
                         />
@@ -324,8 +337,9 @@ const CsvEditor: React.FC = () => {
                     <td className="p-1 text-center">
                       <button
                         onClick={() => deleteRow(rowIdx)}
-                        className="w-6 h-6 text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-all opacity-0 group-hover/row:opacity-100 text-sm"
+                        className="w-6 h-6 text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-all opacity-0 group-hover/row:opacity-100 group-focus-within/row:opacity-100 focus:opacity-100 text-sm"
                         title="刪除此行"
+                        aria-label={`刪除第 ${rowIdx + 1} 行`}
                       >
                         ✕
                       </button>
@@ -342,7 +356,7 @@ const CsvEditor: React.FC = () => {
               </div>
             )}
           </div>
-        </>
+        </FullPageWorkspace>
       )}
     </div>
   );

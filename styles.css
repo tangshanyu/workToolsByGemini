@@ -259,6 +259,23 @@ input, select, textarea { accent-color: var(--md-primary); }
 .markdown-reader-dialog { width: calc(100vw - 24px); height: calc(100dvh - 24px); max-width: none; max-height: none; margin: auto; padding: 0; border: 1px solid var(--md-outline-variant); border-radius: 24px; overflow: hidden; background: var(--md-surface); color: var(--md-on-surface); box-shadow: 0 20px 80px #0005; }
 .markdown-reader-dialog[open] { display: flex; flex-direction: column; }
 .markdown-reader-dialog::backdrop { background: #141016b8; backdrop-filter: blur(4px); }
+.data-workspace-summary { display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; padding: 24px; border: 1px solid var(--md-outline-variant); border-radius: 22px; background: var(--md-surface-container-low); }
+.data-workspace-summary > div { display: flex; flex-direction: column; gap: 5px; }
+.data-workspace-summary strong { font-size: 15px; color: var(--md-on-surface); }
+.data-workspace-summary span { font-size: 11px; color: var(--md-on-surface-variant); }
+.full-page-workspace { width: calc(100vw - 24px); height: calc(100dvh - 24px); max-width: none; max-height: none; margin: auto; padding: 0; border: 1px solid var(--md-outline-variant); border-radius: 24px; overflow: hidden; background: var(--md-surface); color: var(--md-on-surface); box-shadow: 0 20px 80px #0005; }
+.full-page-workspace[open] { display: flex; flex-direction: column; }
+.full-page-workspace::backdrop { background: #141016b8; backdrop-filter: blur(4px); }
+.full-page-workspace-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 72px; padding: 12px 22px; border-bottom: 1px solid var(--md-outline-variant); background: var(--md-surface-container-low); }
+.full-page-workspace-heading { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.full-page-workspace-heading h2 { margin: 0; font-size: 17px; font-weight: 650; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.full-page-workspace-heading span { color: var(--md-on-surface-variant); font-size: 11px; }
+.full-page-workspace-content { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 18px; padding: 20px; }
+.csv-workspace .full-page-workspace-content { overflow: hidden; }
+.csv-workspace-table { min-height: 0; }
+.csv-workspace-table th:not(:first-child), .csv-workspace-table td:not(:first-child) { min-width: 140px; }
+.csv-workspace-table th:last-child, .csv-workspace-table td:last-child { min-width: 42px; }
+.fixed-width-workspace .full-page-workspace-content > div { flex-shrink: 0; }
 .markdown-dialog-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 72px; padding: 12px 22px; border-bottom: 1px solid var(--md-outline-variant); background: var(--md-surface-container-low); }
 .markdown-dialog-header .markdown-file-details h2 { font-size: 16px; }
 .markdown-dialog-scroll { flex: 1; min-height: 0; overflow: auto; padding: 25px clamp(20px, 3vw, 50px); }
@@ -322,6 +339,11 @@ input, select, textarea { accent-color: var(--md-primary); }
   .markdown-source-heading, .markdown-source-actions { flex-wrap: wrap; padding: 12px 16px; } .markdown-source-panel textarea { min-height: 320px; padding: 16px; }
   .markdown-source-actions > div { width: 100%; } .markdown-source-actions .md-button { flex: 1; }
   .markdown-reader-dialog { width: 100vw; height: 100dvh; border: 0; border-radius: 0; }
+  .full-page-workspace { width: 100vw; height: 100dvh; border: 0; border-radius: 0; }
+  .full-page-workspace-header { min-height: 66px; padding: 10px 15px; }
+  .full-page-workspace-content { padding: 14px; }
+  .csv-workspace .full-page-workspace-content { overflow: auto; }
+  .csv-workspace-table { min-height: 320px; }
   .markdown-dialog-header { padding: 10px 15px; min-height: 66px; } .markdown-dialog-header .markdown-file-details h2 { font-size: 14px; }
   .markdown-dialog-scroll { padding: 18px; }
   .word-color-grid { grid-template-columns: 1fr; gap: 14px; } .word-color-field { flex-direction: row; align-items: center; } .word-color-layout { gap: 20px; }

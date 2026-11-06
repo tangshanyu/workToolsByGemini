@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { Button, PageHeader } from '../components/UI';
+import { FullPageWorkspace } from '../components/FullPageWorkspace';
 
 // --- Types ---
 interface FieldDef {
@@ -419,6 +420,7 @@ const FixedWidthProcessor: React.FC = () => {
   const [encoding, setEncoding] = useState('Big5');
   const [manualFields, setManualFields] = useState<FieldDef[]>([{ ...emptyManualField(), seq: 1, start: 1, end: 1, length: 1 }]);
   const [showManualEditor, setShowManualEditor] = useState(false);
+  const [workspaceOpen, setWorkspaceOpen] = useState(false);
 
   const patternFileRef = useRef<HTMLInputElement>(null);
   const dataFileRef = useRef<HTMLInputElement>(null);
@@ -470,6 +472,7 @@ const FixedWidthProcessor: React.FC = () => {
     const firstTab: DataTab = { id: nextTabId(), label: '資料 1', values: {} };
     setTabs([firstTab]);
     setActiveTabId(firstTab.id);
+    setWorkspaceOpen(true);
   };
 
   // ---- Pattern Import ----
@@ -484,6 +487,7 @@ const FixedWidthProcessor: React.FC = () => {
     setTabs([firstTab]);
     setActiveTabId(firstTab.id);
     setPatternInput('');
+    setWorkspaceOpen(true);
   }, []);
 
   const handlePatternFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -596,6 +600,7 @@ const FixedWidthProcessor: React.FC = () => {
     setTabs([]);
     setActiveTabId('');
     setPatternInput('');
+    setWorkspaceOpen(false);
   };
 
   // ---- Computed ----
@@ -748,12 +753,23 @@ const FixedWidthProcessor: React.FC = () => {
       )}
 
       {/* ========== Editor Section ========== */}
+      {hasPattern && <div className="data-workspace-summary">
+        <div><strong>定長資料工作區</strong><span>{fields.length} 欄位 · 總長 {totalLength} · {tabs.length} 筆資料</span></div>
+        <Button onClick={() => setWorkspaceOpen(true)} variant="primary">⛶ 開啟大畫面編輯</Button>
+      </div>}
+
       {hasPattern && (
-        <>
+        <FullPageWorkspace open={workspaceOpen} onClose={() => setWorkspaceOpen(false)} title="定長文字處理" details={`${fields.length} 欄位 · 總長 ${totalLength} · ${tabs.length} 筆資料`} className="fixed-width-workspace">
           {/* Tab Bar + Actions */}
           <div className="flex flex-col gap-3">
             {/* Actions Row */}
             <div className="flex flex-wrap gap-2 items-center">
+              <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+                編碼
+                <select value={encoding} onChange={(e) => setEncoding(e.target.value)} className="rounded-lg border border-gray-200 dark:border-[#333] bg-white dark:bg-[#252526] px-2 py-1.5 text-sm">
+                  {ENCODINGS.map(enc => <option key={enc.value} value={enc.value}>{enc.label}</option>)}
+                </select>
+              </label>
               <Button onClick={addTab} variant="secondary">➕ 新增資料</Button>
               <label>
                 <input
@@ -894,6 +910,7 @@ const FixedWidthProcessor: React.FC = () => {
                                   : 'text-gray-700 dark:text-[#D4D4D4] focus:bg-yellow-50 dark:focus:bg-[#2a2a00]/40'
                               }`}
                               value={val}
+                              aria-label={`${activeTab.label}，${f.name || f.engName || `第 ${f.seq} 欄`}，位置 ${f.start}–${f.end}`}
                               onChange={(e) => updateValue(f.seq, e.target.value)}
                               placeholder={`${f.length} bytes`}
                               spellCheck={false}
@@ -1038,6 +1055,7 @@ const FixedWidthProcessor: React.FC = () => {
                                       : 'text-gray-600 dark:text-gray-400'
                                 } focus:bg-yellow-50 dark:focus:bg-[#2a2a00]/40`}
                                 value={val}
+                                aria-label={`${tab.label}，${f.name || f.engName || `第 ${f.seq} 欄`}`}
                                 onChange={(e) => {
                                   setActiveTabId(tab.id);
                                   setTabs(prev => prev.map(t =>
@@ -1059,7 +1077,7 @@ const FixedWidthProcessor: React.FC = () => {
               </div>
             </div>
           )}
-        </>
+        </FullPageWorkspace>
       )}
     </div>
   );
