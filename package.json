@@ -15,6 +15,7 @@
     "@material/material-color-utilities": "^0.4.0",
     "dompurify": "^3.4.16",
     "lucide-react": "^1.48.0",
+    "mermaid": "^11.17.2",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "react-markdown": "^10.1.0",
@@ -34,5 +35,8 @@
     "tsx": "^4.23.15",
     "typescript": "~5.8.2",
     "vite": "^6.4.3"
+  },
+  "overrides": {
+    "katex": "0.19.1"
   }
 }

@@ -280,6 +280,13 @@ input, select, textarea { accent-color: var(--md-primary); }
 .markdown-dialog-header .markdown-file-details h2 { font-size: 16px; }
 .markdown-dialog-scroll { flex: 1; min-height: 0; overflow: auto; padding: 25px clamp(20px, 3vw, 50px); }
 .markdown-dialog-scroll .markdown-prose { max-width: 1100px; margin: 0 auto; }
+.mermaid-dialog-scroll { display: grid; place-items: center; }
+.mermaid-diagram { min-width: min-content; max-width: 100%; padding: 24px; border-radius: 18px; background: var(--md-surface-container-low); overflow: auto; }
+.mermaid-diagram svg { display: block; max-width: none; min-width: min(70vw, 500px); height: auto; }
+.mermaid-render-error { justify-self: stretch; align-self: start; max-width: 900px; margin: 0 auto; padding: 20px; border-radius: 18px; background: var(--md-error-container); color: var(--md-on-error-container); font-size: 12px; }
+.mermaid-render-error strong { display: block; margin-bottom: 12px; font-size: 14px; }
+.mermaid-render-error pre { white-space: pre-wrap; overflow-wrap: anywhere; font: 12px/1.5 Consolas, 'Courier New', monospace; margin: 0 0 12px; }
+.mermaid-render-error span { font-size: 11px; }
 .markdown-empty-file { font-size: 12px; color: var(--md-on-surface-variant); }
 .markdown-prose { color: var(--md-on-surface); font-size: 14px; line-height: 1.8; overflow-wrap: anywhere; }
 .markdown-prose > :first-child { margin-top: 0; }

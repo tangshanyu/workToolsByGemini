@@ -74,6 +74,13 @@ export const TOOLS: NavItem[] = [
     desc: '讀取 .md 檔案或貼上文字，在主頁編輯原文，並以全頁視窗閱讀排版內容。'
   },
   {
+    path: '/mermaid-reader',
+    label: 'Mermaid 閱讀器',
+    icon: '🔀',
+    categoryId: 'data-fmt',
+    desc: '讀取 Mermaid 檔案或貼上圖表語法，在主頁編輯原始碼，並以全頁視窗閱讀圖表。'
+  },
+  {
     path: '/fixed-width',
     label: '定長文字處理',
     icon: '📏',

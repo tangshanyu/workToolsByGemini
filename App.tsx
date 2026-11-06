@@ -15,6 +15,7 @@ const CsvEditor = lazy(() => import('./pages/CsvEditor'));
 const FixedWidthProcessor = lazy(() => import('./pages/FixedWidthProcessor'));
 const VLookup = lazy(() => import('./pages/VLookup'));
 const MarkdownReader = lazy(() => import('./pages/MarkdownReader'));
+const MermaidReader = lazy(() => import('./pages/MermaidReader'));
 export default function App() {
   return <SqlColorsProvider><HashRouter><Layout><Suspense fallback={<div className="route-loading" role="status">正在準備工作區…</div>}><Routes>
     <Route path="/" element={<Navigate to="/sql-format" replace />} />
@@ -26,6 +27,7 @@ export default function App() {
     <Route path="/domain-convert" element={<DomainConverter />} /><Route path="/csv-editor" element={<CsvEditor />} />
     <Route path="/fixed-width" element={<FixedWidthProcessor />} /><Route path="/vlookup" element={<VLookup />} />
     <Route path="/markdown-reader" element={<MarkdownReader />} />
+    <Route path="/mermaid-reader" element={<MermaidReader />} />
     <Route path="*" element={<Navigate to="/sql-format" replace />} />
   </Routes></Suspense></Layout></HashRouter></SqlColorsProvider>;
 }
